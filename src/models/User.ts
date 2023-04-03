@@ -1,4 +1,4 @@
-import mongoose, { Model } from "mongoose";
+import mongoose, { Schema, Model } from "mongoose";
 import bcrypt from "bcrypt";
 
 interface IUser {
@@ -15,7 +15,7 @@ interface IUserMethods {
 
 type UserModel = Model<IUser, {}, IUserMethods>;
 
-export const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>({
+export const userSchema = new Schema<IUser, UserModel, IUserMethods>({
   username: { type: String, required: true, minlength: 3, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
