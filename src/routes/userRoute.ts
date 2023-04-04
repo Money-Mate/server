@@ -7,9 +7,11 @@ const router = express.Router();
 
 router.post("/login", controller.login);
 router.post("/register", validateUser, controller.register);
-router.get("/all", authenticate, controller.getAllUsers);
-router.get("/one/:id", controller.getUserById);
-router.delete("/delete/:id", controller.deleteUserById);
+router.get("/logout", controller.logout);
+router.get("/checkToken", authenticate, controller.checkToken);
 
+router.get("/all", authenticate, controller.getAllUsers);
+router.get("/one/:id", authenticate, controller.getUserById);
+router.delete("/delete/:id", authenticate, controller.deleteUserById);
 
 export default router;
