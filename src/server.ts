@@ -3,6 +3,8 @@ import express from "express";
 import "./databases/init";
 import userRoute from "./routes/userRoute";
 import transactionRoute from "./routes/transactionRoute";
+import accountRoute from "./routes/accountRoute";
+import dashboardRoute from "./routes/dashboardRoute";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { endpointList } from "./utils/express-list-enpoints";
@@ -20,6 +22,8 @@ app.use(
 
 app.use("/user", userRoute);
 app.use("/transaction", transactionRoute);
+app.use("/account", accountRoute);
+app.use("/dashboard", dashboardRoute);
 
 endpointList(app);
 

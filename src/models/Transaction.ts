@@ -1,11 +1,26 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, Model, Types } from "mongoose";
 
-const productSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  price: { type: Number, required: true },
-  stock: { type: Number, required: true },
+interface ITransaction {
+  user: Types.ObjectId;
+  account: Types.ObjectId;
+  recipient: string;
+  amount: number;
+  date: Date;
+}
+
+type TransactionModel = Model<ITransaction>;
+
+const transactionSchema = new Schema<ITransaction, TransactionModel>({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  account: { type: Schema.Types.ObjectId, ref: "Account", required: true },
+  recipient: { type: String, required: true },
+  amount: { type: Number, required: true },
+  date: { type: Date, required: true },
 });
 
-const Product = mongoose.model("Product", productSchema);
+const Transaction = mongoose.model<ITransaction, TransactionModel>(
+  "Transaction",
+  transactionSchema
+);
 
-export default Product;
+export default Transaction;
