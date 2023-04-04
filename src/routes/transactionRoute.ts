@@ -1,11 +1,16 @@
 import express from "express";
 import * as controller from "../controllers/transactionController";
+import authenticate from "../middlewares/authenticate";
 
 const router = express.Router();
 
-router.get("/all", controller.getAllTransactions);
-router.get("/one/:id", controller.getTransactionById);
-router.post("/add", controller.addTransaction);
-router.delete("/delete/:id", controller.deleteTransactionById);
+router.post("/add", authenticate, controller.addTransaction);
+router.get("/getMy", authenticate, controller.getMyTransactions);
+router.put("/updateMy", authenticate, controller.updateMyTransaction);
+router.delete("/deleteMy/:id", authenticate, controller.deleteMyTransaction);
+
+router.get("/all", authenticate, controller.getAllTransactions);
+router.get("/one/:id", authenticate, controller.getTransactionById);
+router.delete("/delete/:id", authenticate, controller.deleteTransactionById);
 
 export default router;
