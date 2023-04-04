@@ -20,8 +20,8 @@ export const endpointList = (app: Express) => {
     return result + `${route.methods.toString().padEnd(8)}${url}`;
   });
   routes.unshift("# Routes");
-  const finalStrig = routes.join("\n") + "\n";
-  fs.writeFile("routes.md", finalStrig, (err) => {
+  const finalString = routes.join("\n") + "\n";
+  fs.writeFile("routes.md", finalString, (err) => {
     if (err) throw err;
   });
 };
