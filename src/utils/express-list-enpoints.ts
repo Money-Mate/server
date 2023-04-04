@@ -16,8 +16,13 @@ export const endpointList = (app: Express) => {
       category = routeCategory;
     }
 
+    const methods = route.methods.toString().padEnd(8);
     const url = `"http://localhost:${process.env.PORT}${route.path}"`;
-    return result + `${route.methods.toString().padEnd(8)}${url}`;
+    const admin = route.middlewares.includes("isAdmin")
+      ? "admin".padEnd(7)
+      : "".padEnd(7);
+
+    return result + `${methods}${admin}${url}`;
   });
   routes.unshift("# Routes");
   const finalString = routes.join("\n") + "\n";
