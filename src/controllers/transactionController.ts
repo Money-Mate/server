@@ -5,7 +5,7 @@ export const addTransaction = async (req: Request, res: Response) => {
   try {
     const { account, recipient, amount, date } = req.body;
     const data = await new Transaction({
-      user: res.locals.userId,
+      user: res.locals.user._id,
       account,
       recipient,
       amount,
@@ -20,7 +20,10 @@ export const addTransaction = async (req: Request, res: Response) => {
 
 export const getMyTransactions = async (req: Request, res: Response) => {
   try {
-    const query = Transaction.find({ user: res.locals.userId });
+    const query = Transaction.find({ user: res.locals.user._id }).select({
+      user: false,
+      __v: false,
+    });
     if (req.body.accountId) {
       query.find({ account: req.body.accountId });
     }
@@ -35,7 +38,7 @@ export const getMyTransactions = async (req: Request, res: Response) => {
 export const updateMyTransaction = async (req: Request, res: Response) => {
   try {
     const data = await Transaction.updateOne(
-      { user: res.locals.userId, _id: req.body.accountId },
+      { user: res.locals.user._id, _id: req.body.transactionId },
       { ...req.body.data }
     );
     res.json(data);
@@ -48,7 +51,7 @@ export const updateMyTransaction = async (req: Request, res: Response) => {
 export const deleteMyTransaction = async (req: Request, res: Response) => {
   try {
     const data = await Transaction.deleteOne({
-      user: res.locals.userId,
+      user: res.locals.user._id,
       _id: req.params.id,
     });
     res.json(data);
