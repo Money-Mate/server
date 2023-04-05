@@ -37,9 +37,10 @@ export const getMyTransactions = async (req: Request, res: Response) => {
 
 export const updateMyTransaction = async (req: Request, res: Response) => {
   try {
-    const data = await Transaction.updateOne(
+    const data = await Transaction.findOneAndUpdate(
       { user: res.locals.user._id, _id: req.body.transactionId },
-      { ...req.body.data }
+      { ...req.body.data },
+      { returnDocument: "after" }
     );
     res.json(data);
   } catch (err) {

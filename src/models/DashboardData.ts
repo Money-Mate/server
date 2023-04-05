@@ -1,6 +1,6 @@
 import mongoose, { Schema, Model, Types } from "mongoose";
 
-interface IDashboardData {
+export interface IDashboardData {
   user: Types.ObjectId;
   balance: number;
   saved: number;
