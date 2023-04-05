@@ -1,6 +1,7 @@
 import mongoose, { Schema, Model, Types } from "mongoose";
+import { writeDashboardDataOnNewTransaction } from "../utils/dashboarddata-generator";
 
-interface ITransaction {
+export interface ITransaction {
   user: Types.ObjectId;
   account: Types.ObjectId;
   recipient: string;
@@ -16,6 +17,10 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>({
   recipient: { type: String, required: true },
   amount: { type: Number, required: true },
   date: { type: Date, required: true },
+});
+
+transactionSchema.post("save", async function (doc) {
+  await writeDashboardDataOnNewTransaction(doc.user.toString(), doc);
 });
 
 const Transaction = mongoose.model<ITransaction, TransactionModel>(
