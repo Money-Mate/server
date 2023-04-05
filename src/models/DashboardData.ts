@@ -12,10 +12,10 @@ type DashboardDataModel = Model<IDashboardData>;
 
 const dashboardDataSchema = new Schema<IDashboardData, DashboardDataModel>({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  balance: { type: Number, required: true },
-  saved: { type: Number, required: true },
-  scheduledDebit: { type: Number, required: true },
-  balanceEndOfMonth: { type: Number, required: true },
+  balance: { type: Number, default: 0 },
+  saved: { type: Number, default: 0 },
+  scheduledDebit: { type: Number, default: 0 },
+  balanceEndOfMonth: { type: Number, default: 0 },
 });
 
 const DashboardData = mongoose.model<IDashboardData, DashboardDataModel>(
