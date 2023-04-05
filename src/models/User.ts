@@ -7,6 +7,9 @@ interface IUser {
   email: string;
   password: string;
   role: string;
+  financialOptions: {
+    amountEmergencyFund: number;
+  };
 }
 
 interface IUserMethods {
@@ -25,6 +28,9 @@ export const userSchema = new Schema<IUser, UserModel, IUserMethods>({
     type: String,
     enum: ["user", "admin"],
     default: "user",
+  },
+  financialOptions: {
+    amountEmergencyFund: { type: Number },
   },
 });
 
