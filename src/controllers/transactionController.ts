@@ -9,7 +9,7 @@ export const addTransaction = async (req: Request, res: Response) => {
       account,
       recipient,
       amount,
-      date,
+      date: date + " 00:00:000Z",
     }).save();
     res.json({ msg: "Transaction created", data });
   } catch (err) {
@@ -39,7 +39,10 @@ export const updateMyTransaction = async (req: Request, res: Response) => {
   try {
     const data = await Transaction.findOneAndUpdate(
       { user: res.locals.user._id, _id: req.body.transactionId },
-      { ...req.body.data },
+      {
+        ...req.body.data,
+        ...(req.body.data.date && { date: req.body.data.date + " 00:00:000Z" }),
+      },
       { returnDocument: "after" }
     );
     res.json(data);
