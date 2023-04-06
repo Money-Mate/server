@@ -6,6 +6,10 @@ export interface IDashboardData {
   saved: number;
   scheduledDebit: number;
   balanceEndOfMonth: number;
+  lastSixMonthsBalance: {
+    labels: string[];
+    data: number[];
+  };
 }
 
 type DashboardDataModel = Model<IDashboardData>;
@@ -16,6 +20,13 @@ const dashboardDataSchema = new Schema<IDashboardData, DashboardDataModel>({
   saved: { type: Number, default: 0 },
   scheduledDebit: { type: Number, default: 0 },
   balanceEndOfMonth: { type: Number, default: 0 },
+  lastSixMonthsBalance: {
+    labels: {
+      type: Array,
+      default: ["Januar", "Februar", "März", "April", "Mai", "Juni"],
+    },
+    data: { type: Array, default: [0, 0, 0, 0, 0, 0] },
+  },
 });
 
 const DashboardData = mongoose.model<IDashboardData, DashboardDataModel>(

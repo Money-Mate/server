@@ -50,6 +50,13 @@ export const writeDashboardData = async (stringId: string) => {
   const date = new Date();
   const firstOfThisMonth = new Date(date.getFullYear(), date.getMonth(), 1);
   const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const sixMonthsAgo = new Date(
+    new Date(
+      new Date(date.getFullYear(), date.getMonth(), date.getDate()).setMonth(
+        new Date().getMonth() - 5
+      )
+    ).setDate(1)
+  );
 
   // bankBalance
   dashboard.bankBalance = await Transaction.aggregate([
@@ -115,6 +122,43 @@ export const writeDashboardData = async (stringId: string) => {
     }
     return res[0].balanceEndOfMonth;
   });
+
+  // lastSixMonthsBalance
+  // -- alle buchungen vor 6 Monaten bis heute -> group(sum-amount) by month
+  const lastSixMonthsBalance = await Transaction.aggregate([
+    { $match: { user: userId, date: { $gte: sixMonthsAgo } } },
+
+    {
+      $group: {
+        _id: { month: { $month: "$date" }, year: { $year: "$date" } },
+        balanceOfMonth: { $sum: "$amount" },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]).then((res) => {
+    if (!res.length) {
+      return {
+        labels: ["Januar", "Februar", "März", "April", "Mai", "Juni"],
+        data: [0, 0, 0, 0, 0, 0],
+      };
+    }
+    const monthNames = [
+      "Januar",
+      "Februar",
+      "März",
+      "April",
+      "Mai",
+      "Juni",
+      "Juli",
+      "August",
+      "September",
+      "Oktober",
+      "November",
+      "Dezember",
+    ];
+    return res;
+  });
+  console.log(lastSixMonthsBalance);
 
   await dashboard.save();
   console.timeEnd("dashboardBuild");
