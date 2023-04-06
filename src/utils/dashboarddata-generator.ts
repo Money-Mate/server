@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import DashboardData from "../models/DashboardData";
-import { ITransaction } from "../models/Transaction";
+import Transaction, { ITransaction } from "../models/Transaction";
+import User from "../models/User";
 
 export const writeDashboardDataOnNewTransaction = async (
   userId: string,
@@ -9,6 +11,111 @@ export const writeDashboardDataOnNewTransaction = async (
   if (dashboard === null) {
     throw new Error("dashboard not found");
   }
-  dashboard.balance += doc.amount;
+  dashboard.bankBalance += doc.amount;
   await dashboard.save();
+};
+
+export const writeDashboardDataOnTransactionUpdateOne = async (
+  userId: string
+) => {};
+
+export const writeDashboardData = async (stringId: string) => {
+  console.time("dashboardBuild");
+
+  const userId = new mongoose.Types.ObjectId(stringId);
+  const financialOptions = await User.findById(userId)
+    .select({
+      _id: false,
+      financialOptions: true,
+    })
+    .then((res) => {
+      if (res === null) {
+        throw new Error("financialOptions is null");
+      }
+      return res.financialOptions;
+    })
+    .catch(() => {
+      throw new Error("financialOptions not found");
+    });
+  const dashboard = await DashboardData.findOne({ user: userId })
+    .then((res) => {
+      if (res === null) {
+        throw new Error("dashboard is null");
+      }
+      return res;
+    })
+    .catch(() => {
+      throw new Error("dashboard not found");
+    });
+  const date = new Date();
+  const firstOfThisMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  // bankBalance
+  dashboard.bankBalance = await Transaction.aggregate([
+    { $match: { user: userId } },
+    { $group: { _id: null, bankBalance: { $sum: "$amount" } } },
+  ])
+    .then((res) => {
+      if (!res.length) {
+        return 0;
+      }
+      const bankBalance: number = res[0].bankBalance;
+      if (bankBalance === undefined) {
+        throw new Error("bankBalance is undefined");
+      }
+      return bankBalance;
+    })
+    .catch(() => {
+      throw new Error("financialOptions not found");
+    });
+
+  // saved
+  // -- ignoriere buchungen aus diesem monat und dann kontostand - notgroschen
+  dashboard.saved = await Transaction.aggregate([
+    { $match: { user: userId, date: { $gte: firstOfThisMonth } } },
+    { $group: { _id: null, thisMonth: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    const amountSaved =
+      dashboard.bankBalance -
+      res[0].thisMonth -
+      financialOptions.amountEmergencyFund;
+    return amountSaved <= 0 ? 0 : amountSaved;
+  });
+
+  // scheduledDebit
+  // -- alle abbuchungen nach heute und vor monatsende die minus sind
+  dashboard.scheduledDebit = await Transaction.aggregate([
+    {
+      $match: {
+        user: userId,
+        date: { $gt: today },
+        amount: { $lte: 0 },
+      },
+    },
+    { $group: { _id: null, scheduledDebit: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].scheduledDebit;
+  });
+
+  // balanceEndOfMonth
+  // -- kontostand heute plus alle buchungen die noch bis ende des monats kommen
+  dashboard.balanceEndOfMonth = await Transaction.aggregate([
+    { $match: { user: userId, date: { $gte: firstOfThisMonth } } },
+    { $group: { _id: null, balanceEndOfMonth: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].balanceEndOfMonth;
+  });
+
+  await dashboard.save();
+  console.timeEnd("dashboardBuild");
 };
