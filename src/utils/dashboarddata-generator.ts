@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 import DashboardData from "../models/DashboardData";
 import Transaction, { ITransaction } from "../models/Transaction";
 import User from "../models/User";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+dayjs.extend(utc);
 
 export const writeDashboardDataOnNewTransaction = async (
   userId: string,
@@ -47,16 +50,11 @@ export const writeDashboardData = async (stringId: string) => {
     .catch(() => {
       throw new Error("dashboard not found");
     });
-  const date = new Date();
-  const firstOfThisMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-  const today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const sixMonthsAgo = new Date(
-    new Date(
-      new Date(date.getFullYear(), date.getMonth(), date.getDate()).setMonth(
-        new Date().getMonth() - 5
-      )
-    ).setDate(1)
-  );
+
+  // const now = dayjs.utc().toDate();
+  const today = dayjs.utc(dayjs.utc().format("YYYY-MM-DD")).toDate();
+  const sixMonthsAgo = dayjs.utc(today).subtract(5, "months").date(1).toDate();
+  const firstOfThisMonth = dayjs.utc(today).date(1).toDate();
 
   // bankBalance
   dashboard.bankBalance = await Transaction.aggregate([
@@ -125,41 +123,91 @@ export const writeDashboardData = async (stringId: string) => {
 
   // lastSixMonthsBalance
   // -- alle buchungen vor 6 Monaten bis heute -> group(sum-amount) by month
-  const lastSixMonthsBalance = await Transaction.aggregate([
-    { $match: { user: userId, date: { $gte: sixMonthsAgo } } },
-
-    {
-      $group: {
-        _id: { month: { $month: "$date" }, year: { $year: "$date" } },
-        balanceOfMonth: { $sum: "$amount" },
-      },
-    },
-    { $sort: { "_id.year": 1, "_id.month": 1 } },
-  ]).then((res) => {
+  dashboard.lastSixMonthsBalance = await getBalancePerMonth(
+    userId,
+    sixMonthsAgo,
+    today
+  ).then((res) => {
     if (!res.length) {
-      return {
-        labels: ["Januar", "Februar", "März", "April", "Mai", "Juni"],
-        data: [0, 0, 0, 0, 0, 0],
-      };
+      throw new Error("lastSixMonths aggregation failed");
     }
-    const monthNames = [
-      "Januar",
-      "Februar",
-      "März",
-      "April",
-      "Mai",
-      "Juni",
-      "Juli",
-      "August",
-      "September",
-      "Oktober",
-      "November",
-      "Dezember",
-    ];
-    return res;
+    interface IResult {
+      labels: string[];
+      data: number[];
+    }
+    const result: IResult = { labels: [], data: [] };
+    interface IMonth {
+      month: number;
+      year: number;
+      balanceOfMonth: number;
+    }
+    res.forEach((month: IMonth) => {
+      result.labels.push(
+        new Date(new Date().setMonth(month.month - 1)).toLocaleString("de-DE", {
+          month: "long",
+        })
+      );
+      result.data.push(month.balanceOfMonth);
+    });
+    return result;
   });
-  console.log(lastSixMonthsBalance);
 
   await dashboard.save();
   console.timeEnd("dashboardBuild");
+};
+
+const getBalancePerMonth = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date = dayjs.utc().toDate()
+) => {
+  return await Transaction.aggregate([
+    { $match: { user: userId, date: { $gte: startDate, $lte: endDate } } },
+    {
+      $group: {
+        _id: { year: { $year: "$date" }, month: { $month: "$date" } },
+        balanceOfMonth: {
+          $sum: "$amount",
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        balanceOfMonth: 1,
+        date: {
+          $dateFromString: {
+            dateString: {
+              $concat: [
+                "01-",
+                { $toString: "$_id.month" },
+                "-",
+                { $toString: "$_id.year" },
+              ],
+            },
+            format: "%d-%m-%Y",
+          },
+        },
+      },
+    },
+    {
+      $densify: {
+        field: "date",
+        range: {
+          step: 1,
+          unit: "month",
+          bounds: [startDate, endDate],
+        },
+      },
+    },
+    {
+      $project: {
+        month: { $month: "$date" },
+        year: { $year: "$date" },
+        balanceOfMonth: {
+          $cond: [{ $not: ["$balanceOfMonth"] }, 0, "$balanceOfMonth"],
+        },
+      },
+    },
+  ]);
 };
