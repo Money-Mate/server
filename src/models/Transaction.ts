@@ -3,20 +3,40 @@ import { writeDashboardDataOnNewTransaction } from "../utils/dashboarddata-gener
 
 export interface ITransaction {
   user: Types.ObjectId;
-  account: Types.ObjectId;
-  recipient: string;
-  amount: number;
+  account?: Types.ObjectId;
+  accountIBAN: string;
   date: Date;
+  transactionText?: string;
+  recipient?: Types.ObjectId;
+  recipientIBAN: string;
+  amount: number;
+  currency: string;
+  title?: string;
+  comment?: string;
+  category?: Types.ObjectId;
+  subCategory?: Types.ObjectId;
+  statisticDate?: Date;
+  tags?: Types.ObjectId[];
 }
 
 type TransactionModel = Model<ITransaction>;
 
 const transactionSchema = new Schema<ITransaction, TransactionModel>({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  account: { type: Schema.Types.ObjectId, ref: "Account", required: true },
-  recipient: { type: String, required: true },
-  amount: { type: Number, required: true },
+  account: { type: Schema.Types.ObjectId, ref: "Account" },
+  accountIBAN: { type: String, required: true },
   date: { type: Date, required: true },
+  transactionText: { type: String },
+  recipient: { type: Schema.Types.ObjectId, ref: "Recipient" },
+  recipientIBAN: { type: String, required: true },
+  amount: { type: Number, required: true },
+  currency: { type: String, required: true, default: "EUR" },
+  title: { type: String },
+  comment: { type: String },
+  category: { type: Schema.Types.ObjectId, ref: "Category" },
+  subCategory: { type: Schema.Types.ObjectId, ref: "SubCategory" },
+  statisticDate: { type: Date },
+  tags: { type: [{ type: Schema.Types.ObjectId, ref: "Tag" }] },
 });
 
 transactionSchema.post("save", async function (doc) {
