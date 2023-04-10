@@ -4,6 +4,7 @@ import "./databases/init";
 import userRoute from "./routes/userRoute";
 import transactionRoute from "./routes/transactionRoute";
 import categoryRoute from "./routes/categoryRoute";
+import subCategoryRoute from "./routes/subCategoryRoute";
 import accountRoute from "./routes/accountRoute";
 import tagRoute from "./routes/tagRoute";
 import dashboardRoute from "./routes/dashboardRoute";
@@ -25,6 +26,7 @@ app.use(
 app.use("/user", userRoute);
 app.use("/transaction", transactionRoute);
 app.use("/category", categoryRoute);
+app.use("/subCategory", subCategoryRoute);
 app.use("/account", accountRoute);
 app.use("/tag", tagRoute);
 app.use("/dashboard", dashboardRoute);
