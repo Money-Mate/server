@@ -1,6 +1,7 @@
 import mongoose, { Schema, Model } from "mongoose";
 import bcrypt from "bcrypt";
 import DashboardData from "./DashboardData";
+import { categorySetup } from "../utils/category-setup";
 
 interface IUser {
   username: string;
@@ -53,6 +54,7 @@ userSchema.methods.getUserData = function () {
 
 userSchema.post("save", async function (doc) {
   await new DashboardData({ user: doc._id }).save();
+  await categorySetup(doc.id);
 });
 
 const User = mongoose.model<IUser, UserModel>("User", userSchema);

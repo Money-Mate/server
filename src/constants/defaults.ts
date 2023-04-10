@@ -1,4 +1,4 @@
-export const startingCategories = {
+export const startingCategories: { [index: string]: string[] } = {
   Einnahmen: [
     "Lohn und Gehalt",
     "Selbstständigkeit",
