@@ -8,7 +8,8 @@ export interface ITransaction {
   date: Date;
   transactionText?: string;
   recipient?: Types.ObjectId;
-  recipientIBAN: string;
+  recipientName?: string;
+  recipientIBAN?: string;
   amount: number;
   currency: string;
   title?: string;
@@ -28,7 +29,8 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>({
   date: { type: Date, required: true },
   transactionText: { type: String },
   recipient: { type: Schema.Types.ObjectId, ref: "Recipient" },
-  recipientIBAN: { type: String, required: true },
+  recipientName: { type: String },
+  recipientIBAN: { type: String },
   amount: { type: Number, required: true },
   currency: { type: String, required: true, default: "EUR" },
   title: { type: String },
