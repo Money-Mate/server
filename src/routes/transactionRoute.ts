@@ -18,5 +18,6 @@ router.delete(
   isAdmin,
   controller.deleteTransactionById
 );
+router.post("/addMany", authenticate, isAdmin, controller.createMany);
 
 export default router;
