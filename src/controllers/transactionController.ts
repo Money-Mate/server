@@ -1,16 +1,51 @@
-import Transaction from "../models/Transaction";
+import Category from "../models/Category";
+import SubCategory from "../models/SubCategory";
+import Transaction, { ITransaction } from "../models/Transaction";
 import { Request, Response } from "express";
 
 export const addTransaction = async (req: Request, res: Response) => {
   try {
-    const { account, recipient, amount, date } = req.body;
-    const data = await new Transaction({
-      user: res.locals.user._id,
-      account,
-      recipient,
-      amount,
-      date: date + " 00:00:000Z",
-    }).save();
+    const newTransaction: Partial<ITransaction> = {};
+
+    // required fields
+    newTransaction.user = res.locals.user._id;
+    newTransaction.accountIBAN = req.body.accountIBAN;
+    newTransaction.date = new Date(req.body.date + " 00:00:000Z");
+    newTransaction.amount = req.body.amount;
+    newTransaction.currency = req.body.currency;
+
+    // optional fields
+    // TODO: add account
+    if (req.body.transactionText)
+      newTransaction.transactionText = req.body.transactionText;
+    // TODO: add recipient
+    if (req.body.recipientName)
+      newTransaction.recipientName = req.body.recipientName;
+    if (req.body.recipientIBAN)
+      newTransaction.recipientIBAN = req.body.recipientIBAN;
+    if (req.body.title) newTransaction.title = req.body.title;
+    if (req.body.comment) newTransaction.comment = req.body.comment;
+    if (req.body.category) {
+      const category = await Category.findOne({
+        user: res.locals.user._id,
+        name: req.body.category,
+      });
+      newTransaction.category = category?.id;
+    }
+    if (req.body.subCategory) {
+      const subCategory = await SubCategory.findOne({
+        user: res.locals.user._id,
+        name: req.body.subCategory,
+      });
+      newTransaction.subCategory = subCategory?.id;
+    }
+    if (req.body.statisticDate)
+      newTransaction.statisticDate = new Date(
+        req.body.statisticDate + " 00:00:000Z"
+      );
+    // TODO: add tags
+
+    const data = await new Transaction(newTransaction).save();
     res.json({ msg: "Transaction created", data });
   } catch (err) {
     console.log(err);
