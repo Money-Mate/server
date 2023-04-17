@@ -31,7 +31,7 @@ export const userSchema = new Schema<IUser, UserModel, IUserMethods>({
     default: "user",
   },
   financialOptions: {
-    amountEmergencyFund: { type: Number },
+    amountEmergencyFund: { type: Number, default: 0 },
   },
 });
 
