@@ -1,6 +1,6 @@
 import mongoose, { Schema, Model, Types } from "mongoose";
 
-interface IAccount {
+export interface IAccount {
   user: Types.ObjectId;
   name: string;
   iban?: string;

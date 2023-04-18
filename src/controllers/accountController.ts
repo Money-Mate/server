@@ -1,15 +1,18 @@
-import Account from "../models/Account";
+import Account, { IAccount } from "../models/Account";
 import { Request, Response } from "express";
 
 export const addAccount = async (req: Request, res: Response) => {
   try {
-    const { name, reference, iban } = req.body;
-    const data = await new Account({
-      user: res.locals.user._id,
-      name,
-      reference,
-      iban,
-    }).save();
+    const newAccount: Partial<IAccount> = {};
+    // required fields
+    newAccount.user = res.locals.user._id;
+    newAccount.name = req.body.name;
+    newAccount.reference = req.body.reference;
+
+    // optional fields
+    if (req.body.iban) newAccount.iban = req.body.iban;
+
+    const data = await new Account(newAccount).save();
     res.json({ msg: "Account created", data });
   } catch (err) {
     console.log(err);
@@ -19,7 +22,10 @@ export const addAccount = async (req: Request, res: Response) => {
 
 export const getMyAccounts = async (req: Request, res: Response) => {
   try {
-    const data = await Account.find({ user: res.locals.user._id });
+    const data = await Account.find({ user: res.locals.user._id }).select({
+      user: false,
+      __v: false,
+    });
     res.json(data);
   } catch (err) {
     console.log(err);
