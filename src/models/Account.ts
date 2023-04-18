@@ -13,7 +13,11 @@ interface IAccountMethods {
 
 type AccountModel = Model<IAccount, {}, IAccountMethods>;
 
-const accountSchema = new Schema<IAccount, AccountModel, IAccountMethods>({
+export const accountSchema = new Schema<
+  IAccount,
+  AccountModel,
+  IAccountMethods
+>({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
   name: { type: String, required: true },
   iban: { type: String },
