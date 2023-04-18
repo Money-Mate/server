@@ -55,14 +55,10 @@ export const addTransaction = async (req: Request, res: Response) => {
 
 export const getMyTransactions = async (req: Request, res: Response) => {
   try {
-    const query = Transaction.find({ user: res.locals.user._id }).select({
+    const data = await Transaction.find({ user: res.locals.user._id }).select({
       user: false,
       __v: false,
     });
-    if (req.body.accountId) {
-      query.find({ account: req.body.accountId });
-    }
-    const data = await query.exec();
     res.json(data);
   } catch (err) {
     console.log(err);
