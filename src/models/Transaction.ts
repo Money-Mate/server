@@ -22,7 +22,7 @@ export interface ITransaction {
 
 type TransactionModel = Model<ITransaction>;
 
-const transactionSchema = new Schema<ITransaction, TransactionModel>({
+export const transactionSchema = new Schema<ITransaction, TransactionModel>({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
   account: { type: Schema.Types.ObjectId, ref: "Account" },
   accountIBAN: { type: String, required: true },

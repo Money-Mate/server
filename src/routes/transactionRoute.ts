@@ -2,10 +2,16 @@ import express from "express";
 import * as controller from "../controllers/transactionController";
 import authenticate from "../middlewares/authenticate";
 import isAdmin from "../middlewares/isAdmin";
+import validateTransaction from "../middlewares/transactionValidation";
 
 const router = express.Router();
 
-router.post("/add", authenticate, controller.addTransaction);
+router.post(
+  "/add",
+  authenticate,
+  validateTransaction,
+  controller.addTransaction
+);
 router.get("/getMy", authenticate, controller.getMyTransactions);
 router.put("/updateMy", authenticate, controller.updateMyTransaction);
 router.delete("/deleteMy/:id", authenticate, controller.deleteMyTransaction);
