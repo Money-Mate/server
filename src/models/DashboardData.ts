@@ -6,6 +6,14 @@ export interface IDashboardData {
   saved: number;
   scheduledDebit: number;
   balanceEndOfMonth: number;
+  incomeForThisMonth: number;
+  expensesForThisMonth: number;
+  wishlist: {
+    [key: string]: number;
+  };
+  budgetlist: {
+    [key: string]: number;
+  };
   lastSixMonthsBalance: {
     labels: string[];
     data: number[];
@@ -20,6 +28,10 @@ const dashboardDataSchema = new Schema<IDashboardData, DashboardDataModel>({
   saved: { type: Number, default: 0 },
   scheduledDebit: { type: Number, default: 0 },
   balanceEndOfMonth: { type: Number, default: 0 },
+  incomeForThisMonth: { type: Number, default: 0 },
+  expensesForThisMonth: { type: Number, default: 0 },
+  wishlist: { type: Object, default: {} },
+  budgetlist: { type: Object, default: {} },
   lastSixMonthsBalance: {
     labels: {
       type: Array,

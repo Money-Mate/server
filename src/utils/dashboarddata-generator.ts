@@ -4,7 +4,7 @@ import Transaction, { ITransaction } from "../models/Transaction";
 import User from "../models/User";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import Category from "../models/Category";
+
 dayjs.extend(utc);
 
 export const writeDashboardDataOnNewTransaction = async (
@@ -214,11 +214,12 @@ const getBalancePerMonth = async (
 };
 
 // incomeThisMonth
-const getIncomePerMonth = async (
+const getIncomeForThisMonths = async (
   userId: mongoose.Types.ObjectId,
   startDate: Date,
   endDate: Date = dayjs.utc().toDate()
 ) => {
+  // funktion ausdenken damit der jetztige Monat automatisch herausgefunden wird
   await Transaction.aggregate([
     {
       $match: {
@@ -236,11 +237,12 @@ const getIncomePerMonth = async (
 };
 
 // expensesThisMonth
-const expensesPerMonth = async (
+const expensesForThisMonths = async (
   userId: mongoose.Types.ObjectId,
   startDate: Date,
   endDate: Date = dayjs.utc().toDate()
 ) => {
+  // funktion ausdenken damit der jetztige Monat automatisch herausgefunden wird
   await Transaction.aggregate([
     {
       $match: {
@@ -259,6 +261,7 @@ const expensesPerMonth = async (
 
 
 // budgets
+// muss noch überarbeitet werden wenn die models stehen
 const showBudget = async (
   userId: mongoose.Types.ObjectId,
   category: mongoose.Types.ObjectId
@@ -276,6 +279,7 @@ const showBudget = async (
 
 
 // wishlists
+// muss noch überarbeitet werden wenn die models stehen
 const showWishlist = async (
   userId: mongoose.Types.ObjectId,
   category: mongoose.Types.ObjectId
