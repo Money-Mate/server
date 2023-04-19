@@ -1,9 +1,10 @@
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
 import DashboardData from "../models/DashboardData";
 import Transaction, { ITransaction } from "../models/Transaction";
 import User from "../models/User";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import Category from "../models/Category";
 dayjs.extend(utc);
 
 export const writeDashboardDataOnNewTransaction = async (
@@ -210,4 +211,82 @@ const getBalancePerMonth = async (
       },
     },
   ]);
+};
+
+// incomeThisMonth
+const getIncomePerMonth = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date = dayjs.utc().toDate()
+) => {
+  await Transaction.aggregate([
+    {
+      $match: {
+        user: userId,
+        date: { $gte: startDate, $lte: endDate, amount: { $gt: 0 } },
+      },
+    },
+    { $group: { _id: null, IncomeThisMonth: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].IncomeThisMonth;
+  });
+};
+
+// expensesThisMonth
+const expensesPerMonth = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date = dayjs.utc().toDate()
+) => {
+  await Transaction.aggregate([
+    {
+      $match: {
+        user: userId,
+        date: { $gte: startDate, $lte: endDate, amount: { $lt: 0 } },
+      },
+    },
+    { $group: { _id: null, ExpensesThisMonth: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].ExpensesThisMonth;
+  });
+};
+
+
+// budgets
+const showBudget = async (
+  userId: mongoose.Types.ObjectId,
+  category: mongoose.Types.ObjectId
+) => {
+  await Transaction.aggregate([
+    { $match: { user: userId, category: category } },
+    { $group: { _id: null, budget: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].showBudget;
+  });
+};
+
+
+// wishlists
+const showWishlist = async (
+  userId: mongoose.Types.ObjectId,
+  category: mongoose.Types.ObjectId
+) => {
+  await Transaction.aggregate([
+    { $match: { user: userId, category: category } },
+    { $group: { _id: null, wishlist: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].showWishlist;
+  });
 };
