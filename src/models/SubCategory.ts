@@ -1,6 +1,6 @@
 import mongoose, { Schema, Model, Types } from "mongoose";
 
-interface ISubCategory {
+export interface ISubCategory {
   user: Types.ObjectId;
   name: string;
   parentCategory: Types.ObjectId;
