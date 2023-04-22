@@ -26,6 +26,22 @@ export const getMySubCategorys = async (req: Request, res: Response) => {
   }
 };
 
+export const getMySubCategoriesByCategory = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const data = await SubCategory.find({
+      user: res.locals.user._id,
+      parentCategory: req.params.id,
+    }).select({ user: false, __v: false, parentCategory: false });
+    res.json(data);
+  } catch (err) {
+    console.log(err);
+    res.json({ msg: "server error" });
+  }
+};
+
 export const updateMySubCategory = async (req: Request, res: Response) => {
   try {
     const data = await SubCategory.updateOne(
