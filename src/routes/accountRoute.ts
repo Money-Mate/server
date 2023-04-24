@@ -6,6 +6,7 @@ import z from "zod";
 import { validate } from "../middlewares/validation";
 import isIBAN from "validator/lib/isIBAN";
 import { Types } from "mongoose";
+import cookieRefresh from "../middlewares/cookieRefresh";
 
 const router = express.Router();
 
@@ -61,16 +62,34 @@ const updateSchema = z.object({
   }),
 });
 
-router.post("/add", authenticate, validate(addSchema), controller.addAccount);
-router.get("/getAllMy", authenticate, controller.getMyAccounts);
+router.post(
+  "/add",
+  authenticate,
+  cookieRefresh,
+  validate(addSchema),
+  controller.addAccount
+);
+router.get("/getAllMy", authenticate, cookieRefresh, controller.getMyAccounts);
 router.put(
   "/updateMy",
   authenticate,
+  cookieRefresh,
   validate(updateSchema),
   controller.updateMyAccount
 );
-router.delete("/deleteMy/:id", authenticate, controller.deleteMyAccountById);
+router.delete(
+  "/deleteMy/:id",
+  authenticate,
+  cookieRefresh,
+  controller.deleteMyAccountById
+);
 
-router.get("/all", authenticate, isAdmin, controller.getAllAccounts);
+router.get(
+  "/all",
+  authenticate,
+  cookieRefresh,
+  isAdmin,
+  controller.getAllAccounts
+);
 
 export default router;

@@ -4,6 +4,7 @@ import authenticate from "../middlewares/authenticate";
 import z from "zod";
 import { Types } from "mongoose";
 import { validate } from "../middlewares/validation";
+import cookieRefresh from "../middlewares/cookieRefresh";
 
 const router = express.Router();
 
@@ -57,24 +58,33 @@ const updateSchema = z.object({
 router.post(
   "/add",
   authenticate,
+  cookieRefresh,
   validate(addSchema),
   controller.addSubCategory
 );
-router.get("/getAllMy", authenticate, controller.getMySubCategorys);
+router.get(
+  "/getAllMy",
+  authenticate,
+  cookieRefresh,
+  controller.getMySubCategorys
+);
 router.get(
   "/getSubByCategory/:id",
   authenticate,
+  cookieRefresh,
   controller.getMySubCategoriesByCategory
 );
 router.put(
   "/updateMy",
   authenticate,
+  cookieRefresh,
   validate(updateSchema),
   controller.updateMySubCategory
 );
 router.delete(
   "/deleteMy/:id",
   authenticate,
+  cookieRefresh,
   controller.deleteMySubCategoryById
 );
 

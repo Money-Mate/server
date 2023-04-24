@@ -4,6 +4,7 @@ import authenticate from "../middlewares/authenticate";
 import z from "zod";
 import { validate } from "../middlewares/validation";
 import { Types } from "mongoose";
+import cookieRefresh from "../middlewares/cookieRefresh";
 
 const router = express.Router();
 
@@ -18,14 +19,26 @@ const updateSchema = z.object({
   }),
 });
 
-router.post("/add", authenticate, validate(addSchema), controller.addTag);
-router.get("/getAllMy", authenticate, controller.getMyTags);
+router.post(
+  "/add",
+  authenticate,
+  cookieRefresh,
+  validate(addSchema),
+  controller.addTag
+);
+router.get("/getAllMy", authenticate, cookieRefresh, controller.getMyTags);
 router.put(
   "/updateMy",
   authenticate,
+  cookieRefresh,
   validate(updateSchema),
   controller.updateMyTag
 );
-router.delete("/deleteMy/:id", authenticate, controller.deleteMyTagById);
+router.delete(
+  "/deleteMy/:id",
+  authenticate,
+  cookieRefresh,
+  controller.deleteMyTagById
+);
 
 export default router;

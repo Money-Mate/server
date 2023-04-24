@@ -7,6 +7,7 @@ import { validate } from "../middlewares/validation";
 import { Types } from "mongoose";
 import isDate from "validator/lib/isDate";
 import isIBAN from "validator/lib/isIBAN";
+import cookieRefresh from "../middlewares/cookieRefresh";
 
 const router = express.Router();
 
@@ -131,23 +132,43 @@ const updateSchema = z.object({
 router.post(
   "/add",
   authenticate,
+  cookieRefresh,
   validate(addSchema),
   controller.addTransaction
 );
-router.get("/getMy", authenticate, controller.getMyTransactions);
+router.get("/getMy", authenticate, cookieRefresh, controller.getMyTransactions);
 router.put(
   "/updateMy",
   authenticate,
+  cookieRefresh,
   validate(updateSchema),
   controller.updateMyTransaction
 );
-router.delete("/deleteMy/:id", authenticate, controller.deleteMyTransaction);
+router.delete(
+  "/deleteMy/:id",
+  authenticate,
+  cookieRefresh,
+  controller.deleteMyTransaction
+);
 
-router.get("/all", authenticate, isAdmin, controller.getAllTransactions);
-router.get("/one/:id", authenticate, isAdmin, controller.getTransactionById);
+router.get(
+  "/all",
+  authenticate,
+  cookieRefresh,
+  isAdmin,
+  controller.getAllTransactions
+);
+router.get(
+  "/one/:id",
+  authenticate,
+  cookieRefresh,
+  isAdmin,
+  controller.getTransactionById
+);
 router.delete(
   "/delete/:id",
   authenticate,
+  cookieRefresh,
   isAdmin,
   controller.deleteTransactionById
 );
