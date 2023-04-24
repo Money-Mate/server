@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from "express";
-import User from "../models/User";
 import jwt from "jsonwebtoken";
 
 const cookieRefresh = async (
