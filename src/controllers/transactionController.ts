@@ -28,15 +28,35 @@ export const addTransaction = async (req: Request, res: Response) => {
     if (req.body.category) {
       const category = await Category.findOne({
         user: res.locals.user._id,
-        name: req.body.category,
+        _id: req.body.category,
       });
+      if (category === null) {
+        const err = new Error("category does not exist");
+        err.name = "custom";
+        throw err;
+      }
       newTransaction.category = category?.id;
     }
     if (req.body.subCategory) {
-      const subCategory = await SubCategory.findOne({
+      let subCategory = await SubCategory.findOne({
         user: res.locals.user._id,
-        name: req.body.subCategory,
+        _id: req.body.subCategory,
       });
+      if (subCategory === null) {
+        const err = new Error("subCategory does not exist");
+        err.name = "custom";
+        throw err;
+      }
+      subCategory = await SubCategory.findOne({
+        user: res.locals.user._id,
+        _id: req.body.subCategory,
+        parentCategory: req.body.category,
+      });
+      if (subCategory === null) {
+        const err = new Error("subCategory has wrong parentCategory");
+        err.name = "custom";
+        throw err;
+      }
       newTransaction.subCategory = subCategory?.id;
     }
     if (req.body.statisticDate)
@@ -49,7 +69,12 @@ export const addTransaction = async (req: Request, res: Response) => {
     res.json({ msg: "Transaction created", data });
   } catch (err) {
     console.log(err);
-    res.json({ msg: "server error" });
+    if (err instanceof Error) {
+      if (err.name === "custom") {
+        return res.status(400).json({ msg: err.message });
+      }
+    }
+    res.status(500).json({ msg: "server error" });
   }
 };
 
@@ -68,17 +93,100 @@ export const getMyTransactions = async (req: Request, res: Response) => {
 
 export const updateMyTransaction = async (req: Request, res: Response) => {
   try {
+    if (req.body.data.category) {
+      const category = await Category.findOne({
+        user: res.locals.user._id,
+        _id: req.body.data.category,
+      });
+      if (category === null) {
+        const err = new Error("category does not exist");
+        err.name = "custom";
+        throw err;
+      }
+    }
+
+    if (req.body.data.subCategory) {
+      const subCategory = await SubCategory.findOne({
+        user: res.locals.user._id,
+        _id: req.body.data.subCategory,
+      });
+      if (subCategory === null) {
+        const err = new Error("subCategory does not exist");
+        err.name = "custom";
+        throw err;
+      }
+    }
+
+    const categories: { category?: string; subCategory?: string | null } = {};
+
+    if (req.body.data.category && req.body.data.subCategory) {
+      const subCategory = await SubCategory.findOne({
+        user: res.locals.user._id,
+        _id: req.body.data.subCategory,
+        parentCategory: req.body.data.category,
+      });
+      if (subCategory === null) {
+        const err = new Error("subCategory has wrong parentCategory");
+        err.name = "custom";
+        throw err;
+      }
+      categories.category = req.body.data.category;
+      categories.subCategory = req.body.data.subCategory;
+    } else if (!req.body.data.category && req.body.data.subCategory) {
+      const oldTransaction = await Transaction.findOne({
+        user: res.locals.user._id,
+        _id: req.body.transactionId,
+      });
+      if (oldTransaction === null) {
+        const err = new Error("transactionId does not exist");
+        err.name = "custom";
+        throw err;
+      }
+      const subCategory = await SubCategory.findOne({
+        user: res.locals.user._id,
+        _id: req.body.data.subCategory,
+        parentCategory: oldTransaction.category,
+      });
+      if (subCategory === null) {
+        const err = new Error("subCategory has wrong parentCategory");
+        err.name = "custom";
+        throw err;
+      }
+      categories.category = oldTransaction.category?.toString();
+      categories.subCategory = req.body.data.subCategory;
+    } else if (req.body.data.category && !req.body.data.subCategory) {
+      const category = await Category.findOne({
+        user: res.locals.user._id,
+        _id: req.body.data.category,
+      });
+      if (category === null) {
+        const err = new Error("category does not exist");
+        err.name = "custom";
+        throw err;
+      }
+      categories.category = req.body.data.category;
+      categories.subCategory = null;
+    }
+
+    const updatedTransaction = {
+      ...req.body.data,
+      ...(req.body.data.date && { date: req.body.data.date + " 00:00:000Z" }),
+      ...categories,
+    };
+
     const data = await Transaction.findOneAndUpdate(
       { user: res.locals.user._id, _id: req.body.transactionId },
-      {
-        ...req.body.data,
-        ...(req.body.data.date && { date: req.body.data.date + " 00:00:000Z" }),
-      },
+      updatedTransaction,
       { returnDocument: "after" }
     );
     res.json(data);
   } catch (err) {
     console.log(err);
+    if (err instanceof Error) {
+      if (err.name === "custom") {
+        return res.status(400).json({ msg: err.message });
+      }
+    }
     res.json({ msg: "server error" });
   }
 };
