@@ -4,6 +4,7 @@ import authenticate from "../middlewares/authenticate";
 import isAdmin from "../middlewares/isAdmin";
 import z from "zod";
 import { validate } from "../middlewares/validation";
+import cookieRefresh from "../middlewares/cookieRefresh";
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ const addSchema = z.object({
 router.post("/login", controller.login);
 router.post("/register", validate(addSchema), controller.register);
 router.get("/logout", controller.logout);
-router.get("/checkToken", authenticate, controller.checkToken);
+router.get("/checkToken", authenticate, cookieRefresh, controller.checkToken);
 
 router.get("/all", authenticate, isAdmin, controller.getAllUsers);
 router.get("/one/:id", authenticate, isAdmin, controller.getUserById);
