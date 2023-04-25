@@ -20,6 +20,7 @@ router.post("/login", controller.login);
 router.post("/register", validate(addSchema), controller.register);
 router.get("/logout", controller.logout);
 router.get("/checkToken", authenticate, cookieRefresh, controller.checkToken);
+router.get("/getUserData", authenticate, controller.getUserData);
 
 router.get("/all", authenticate, isAdmin, controller.getAllUsers);
 router.get("/one/:id", authenticate, isAdmin, controller.getUserById);
