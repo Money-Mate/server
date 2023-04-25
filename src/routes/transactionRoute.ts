@@ -129,6 +129,50 @@ const updateSchema = z.object({
   }),
 });
 
+const getMySchema = z.object({
+  query: z.object({
+    accounts: z.array(z.string()).optional(),
+    amount: z.enum(["pos", "neg"]).optional(),
+    categories: z
+      .array(
+        z.string().refine((id) => Types.ObjectId.isValid(id), {
+          message: "invalid ObjectId",
+        })
+      )
+      .optional(),
+    subCategories: z
+      .array(
+        z.string().refine((id) => Types.ObjectId.isValid(id), {
+          message: "invalid ObjectId",
+        })
+      )
+      .optional(),
+    date: z.enum(["asc", "desc"]).optional(),
+    startDate: z
+      .string()
+      .refine((date) =>
+        isDate(date, {
+          format: "YYYY-MM-DD",
+          strictMode: true,
+          delimiters: ["-"],
+        })
+      )
+      .optional(),
+    endDate: z
+      .string()
+      .refine((date) =>
+        isDate(date, {
+          format: "YYYY-MM-DD",
+          strictMode: true,
+          delimiters: ["-"],
+        })
+      )
+      .optional(),
+    page: z.number().optional(),
+    docsPerPage: z.number().optional(),
+  }),
+});
+
 router.post(
   "/add",
   authenticate,
@@ -136,7 +180,19 @@ router.post(
   validate(addSchema),
   controller.addTransaction
 );
-router.get("/getMy", authenticate, cookieRefresh, controller.getMyTransactions);
+router.get(
+  "/getMy",
+  authenticate,
+  cookieRefresh,
+  validate(getMySchema),
+  controller.getMyTransactions
+);
+router.get(
+  "/getFilterOptions",
+  authenticate,
+  cookieRefresh,
+  controller.getFilterOptions
+);
 router.put(
   "/updateMy",
   authenticate,
