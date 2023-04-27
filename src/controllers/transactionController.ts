@@ -163,7 +163,7 @@ export const getMyTransactions = async (req: Request, res: Response) => {
     const data = await agg.exec();
     res.json({
       page: page,
-      maxPages: Math.ceil(data[0].docsCount[0].docsCount / docsPerPage),
+      totalDocs: data[0].docsCount[0].docsCount,
       data: data[0].data,
     });
   } catch (err) {
