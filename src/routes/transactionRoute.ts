@@ -168,8 +168,9 @@ const getMySchema = z.object({
         })
       )
       .optional(),
-    page: z.number().optional(),
-    docsPerPage: z.number().optional(),
+    page: z.string().optional(),
+    docsPerPage: z.string().optional(),
+    // TODO: page and docsPerPage has to be number but query is string
   }),
 });
 
