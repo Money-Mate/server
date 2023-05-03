@@ -72,6 +72,8 @@ export const writeDashboardData = async (stringId: string) => {
     sixMonthsAgo,
     today
   );
+  dashboard.lastSixMonthsIncomeAndExpenses =
+    await getLastSixMonthsIncomeAndExpenses(userId, sixMonthsAgo, today);
   // dashboard.wishlist = {};
   // dashboard.budgetlist = {};
 
@@ -283,6 +285,161 @@ const getExpensesForThisMonth = async (
       return 0;
     }
     return res[0].expensesThisMonth;
+  });
+};
+
+const getLastSixMonthsIncomeAndExpenses = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date
+) => {
+  // lastSixMonthsIncomeAndExpenses -- summed up incomes and expenses grouped per month
+  return await Transaction.aggregate([
+    { $match: { user: userId } },
+    {
+      $addFields: {
+        sortDate: {
+          $cond: [
+            { $ifNull: ["$statisticDate", false] },
+            "$statisticDate",
+            "$date",
+          ],
+        },
+      },
+    },
+    { $match: { sortDate: { $gte: startDate, $lte: endDate } } },
+    {
+      $facet: {
+        income: [
+          { $match: { amount: { $gt: 0 } } },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$sortDate" },
+                month: { $month: "$sortDate" },
+              },
+              amount: {
+                $sum: "$amount",
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              amount: 1,
+              date: {
+                $dateFromString: {
+                  dateString: {
+                    $concat: [
+                      "01-",
+                      { $toString: "$_id.month" },
+                      "-",
+                      { $toString: "$_id.year" },
+                    ],
+                  },
+                  format: "%d-%m-%Y",
+                },
+              },
+            },
+          },
+          {
+            $densify: {
+              field: "date",
+              range: {
+                step: 1,
+                unit: "month",
+                bounds: [startDate, endDate],
+              },
+            },
+          },
+          {
+            $project: {
+              month: { $month: "$date" },
+              year: { $year: "$date" },
+              amount: {
+                $cond: [{ $not: ["$amount"] }, 0, "$amount"],
+              },
+            },
+          },
+        ],
+        expenses: [
+          { $match: { amount: { $lt: 0 } } },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$sortDate" },
+                month: { $month: "$sortDate" },
+              },
+              amount: {
+                $sum: "$amount",
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              amount: 1,
+              date: {
+                $dateFromString: {
+                  dateString: {
+                    $concat: [
+                      "01-",
+                      { $toString: "$_id.month" },
+                      "-",
+                      { $toString: "$_id.year" },
+                    ],
+                  },
+                  format: "%d-%m-%Y",
+                },
+              },
+            },
+          },
+          {
+            $densify: {
+              field: "date",
+              range: {
+                step: 1,
+                unit: "month",
+                bounds: [startDate, endDate],
+              },
+            },
+          },
+          {
+            $project: {
+              month: { $month: "$date" },
+              year: { $year: "$date" },
+              amount: {
+                $cond: [{ $not: ["$amount"] }, 0, "$amount"],
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]).then((res) => {
+    if (!res.length) {
+      throw new Error("lastSixMonthsIncomeAndExpenses aggregation failed");
+    }
+    interface IResult {
+      labels: string[];
+      data: { income: number[]; expenses: number[] };
+    }
+    const result: IResult = { labels: [], data: { income: [], expenses: [] } };
+    interface IMonth {
+      month: number;
+      year: number;
+      amount: number;
+    }
+    res[0].income.forEach((month: IMonth) => {
+      result.labels.push(
+        new Date(new Date().setMonth(month.month - 1)).toLocaleString("de-DE", {
+          month: "long",
+        })
+      );
+      result.data.income.push(month.amount);
+    });
+    result.data.expenses = res[0].expenses.map((month: IMonth) => month.amount);
+    return result;
   });
 };
 

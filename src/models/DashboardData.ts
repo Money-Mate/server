@@ -18,6 +18,10 @@ export interface IDashboardData {
     labels: string[];
     data: number[];
   };
+  lastSixMonthsIncomeAndExpenses: {
+    labels: string[];
+    data: { income: number[]; expenses: number[] };
+  };
 }
 
 type DashboardDataModel = Model<IDashboardData>;
@@ -38,6 +42,19 @@ const dashboardDataSchema = new Schema<IDashboardData, DashboardDataModel>({
       default: ["Januar", "Februar", "März", "April", "Mai", "Juni"],
     },
     data: { type: Array, default: [0, 0, 0, 0, 0, 0] },
+  },
+  lastSixMonthsIncomeAndExpenses: {
+    labels: {
+      type: Array,
+      default: ["Januar", "Februar", "März", "April", "Mai", "Juni"],
+    },
+    data: {
+      type: Object,
+      default: {
+        income: [0, 0, 0, 0, 0, 0],
+        expenses: [0, 0, 0, 0, 0, 0],
+      },
+    },
   },
 });
 
