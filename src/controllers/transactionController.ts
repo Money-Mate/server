@@ -130,6 +130,32 @@ export const getMyTransactions = async (req: Request, res: Response) => {
       agg.append({ $match: { subCategory: { $in: ids } } });
     }
 
+    // data customization
+    agg.append(
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+          pipeline: [{ $project: { user: 0, __v: 0 } }],
+        },
+      },
+      { $unwind: { path: "$category" } }
+    );
+    agg.append(
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subCategory",
+          foreignField: "_id",
+          as: "subCategory",
+          pipeline: [{ $project: { user: 0, __v: 0, parentCategory: 0 } }],
+        },
+      },
+      { $unwind: { path: "$subCategory" } }
+    );
+
     // sorting
     switch (req.query.date) {
       case "asc":
