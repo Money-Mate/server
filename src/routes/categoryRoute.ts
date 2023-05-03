@@ -29,6 +29,12 @@ router.post(
   controller.addCategory
 );
 router.get("/getAllMy", authenticate, cookieRefresh, controller.getMyCategorys);
+router.get(
+  "/getMyCategoryTree",
+  authenticate,
+  cookieRefresh,
+  controller.getMyCategoryTree
+);
 router.put(
   "/updateMy",
   authenticate,
