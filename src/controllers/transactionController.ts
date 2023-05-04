@@ -205,8 +205,8 @@ export const getFilterOptions = async (req: Request, res: Response) => {
       dateRange: { startDate: string; endDate: string };
       date: string[];
       amount: string[];
-      categories: string[];
-      subCategories: string[];
+      categories: { id: string; name: string }[];
+      subCategories: { id: string; name: string }[];
     }> = {};
     data.accounts = await Transaction.aggregate([
       { $match: { user: res.locals.user._id } },
@@ -215,15 +215,37 @@ export const getFilterOptions = async (req: Request, res: Response) => {
     data.categories = await Transaction.aggregate([
       { $match: { user: res.locals.user._id } },
       { $group: { _id: "$category" } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "c",
+          pipeline: [{ $project: { _id: 1, name: 1 } }],
+        },
+      },
     ])
       .then((res) => res.filter((item) => item._id !== null))
-      .then((res) => res.map((item) => item._id));
+      .then((res) =>
+        res.map((item) => ({ id: item.c[0]._id, name: item.c[0].name }))
+      );
     data.subCategories = await Transaction.aggregate([
       { $match: { user: res.locals.user._id } },
       { $group: { _id: "$subCategory" } },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "sc",
+          pipeline: [{ $project: { _id: 1, name: 1 } }],
+        },
+      },
     ])
       .then((res) => res.filter((item) => item._id !== null))
-      .then((res) => res.map((item) => item._id));
+      .then((res) =>
+        res.map((item) => ({ id: item.sc[0]._id, name: item.sc[0].name }))
+      );
 
     data.dateRange = { startDate: "", endDate: "" };
     data.date = ["desc", "asc"];
