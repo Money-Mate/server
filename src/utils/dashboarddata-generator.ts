@@ -78,6 +78,8 @@ export const writeDashboardData = async (stringId: string) => {
   );
   dashboard.lastSixMonthsIncomeAndExpenses =
     await getLastSixMonthsIncomeAndExpenses(userId, sixMonthsAgo, today);
+  dashboard.lastSixMonthsExpensesByCategory =
+    await getLastSixMonthsExpensesByCategory(userId, sixMonthsAgo, today);
   // dashboard.wishlist = {};
   // dashboard.budgetlist = {};
 
@@ -474,6 +476,65 @@ const getLastSixMonthsIncomeAndExpenses = async (
     );
     return result;
   });
+};
+
+const getLastSixMonthsExpensesByCategory = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date
+) => {
+  // lastSixMonthsExpensesByCategory -- get expenses of last six months grouped by categories and subcategories
+  return await Transaction.aggregate([
+    { $match: { user: userId, amount: { $lt: 0 } } },
+    {
+      $addFields: {
+        sortDate: {
+          $cond: [
+            { $ifNull: ["$statisticDate", false] },
+            "$statisticDate",
+            "$date",
+          ],
+        },
+      },
+    },
+    { $match: { sortDate: { $gte: startDate, $lte: endDate } } },
+    {
+      $group: {
+        _id: "$subCategory",
+        amount: {
+          $sum: "$amount",
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "subcategories",
+        localField: "_id",
+        foreignField: "_id",
+        as: "sub",
+      },
+    },
+    {
+      $lookup: {
+        from: "categories",
+        localField: "sub.0.parentCategory",
+        foreignField: "_id",
+        as: "cat",
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        category: {
+          $ifNull: [{ $arrayElemAt: ["$cat.name", 0] }, "nicht zugewiesen"],
+        },
+        subCategory: {
+          $ifNull: [{ $arrayElemAt: ["$sub.name", 0] }, "nicht zugewiesen"],
+        },
+        amount: { $abs: "$amount" },
+      },
+    },
+  ]);
 };
 
 const getBudgetlist = async (

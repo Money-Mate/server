@@ -23,6 +23,11 @@ export interface IDashboardData {
     labels: string[];
     data: { income: number[]; expenses: number[] };
   };
+  lastSixMonthsExpensesByCategory: {
+    category: string;
+    subCategory: string;
+    amount: number;
+  }[];
 }
 
 type DashboardDataModel = Model<IDashboardData>;
@@ -57,6 +62,10 @@ const dashboardDataSchema = new Schema<IDashboardData, DashboardDataModel>({
         expenses: [0, 0, 0, 0, 0, 0],
       },
     },
+  },
+  lastSixMonthsExpensesByCategory: {
+    type: [Object],
+    default: [{ category: "", subCategory: "", amount: 0 }],
   },
 });
 
