@@ -1,7 +1,9 @@
+import z from "zod";
 import Category from "../models/Category";
 import SubCategory from "../models/SubCategory";
 import Transaction, { ITransaction } from "../models/Transaction";
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 
 export const addTransaction = async (req: Request, res: Response) => {
   try {
@@ -80,10 +82,174 @@ export const addTransaction = async (req: Request, res: Response) => {
 
 export const getMyTransactions = async (req: Request, res: Response) => {
   try {
-    const data = await Transaction.find({ user: res.locals.user._id }).select({
-      user: false,
-      __v: false,
+    const agg = Transaction.aggregate([
+      { $match: { user: res.locals.user._id } },
+      {
+        $addFields: {
+          sortDate: {
+            $cond: [
+              { $ifNull: ["$statisticDate", false] },
+              "$statisticDate",
+              "$date",
+            ],
+          },
+        },
+      },
+    ]);
+
+    // filters
+    if (req.query.startDate) {
+      const startDate = new Date(req.query.startDate + " 00:00:000Z");
+      agg.append({ $match: { sortDate: { $gte: startDate } } });
+    }
+    if (req.query.endDate) {
+      const endDate = new Date(req.query.endDate + " 00:00:000Z");
+      agg.append({ $match: { sortDate: { $lte: endDate } } });
+    }
+    if (req.query.accounts && req.query.accounts.length) {
+      agg.append({ $match: { accountIBAN: { $in: req.query.accounts } } });
+    }
+    if (req.query.amount) {
+      if (req.query.amount === "pos") {
+        agg.append({ $match: { amount: { $gte: 0 } } });
+      }
+      if (req.query.amount === "neg") {
+        agg.append({ $match: { amount: { $lte: 0 } } });
+      }
+    }
+    if (req.query.categories && req.query.categories.length) {
+      const categories = z.array(z.string()).parse(req.query.categories);
+      const ids = categories.map((id) => new mongoose.Types.ObjectId(id));
+      agg.append({
+        $match: { category: { $in: ids } },
+      });
+    }
+    if (req.query.subCategories && req.query.subCategories.length) {
+      const subCategories = z.array(z.string()).parse(req.query.subCategories);
+      const ids = subCategories.map((id) => new mongoose.Types.ObjectId(id));
+      agg.append({ $match: { subCategory: { $in: ids } } });
+    }
+
+    // data customization
+    agg.append(
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category",
+          pipeline: [{ $project: { user: 0, __v: 0 } }],
+        },
+      },
+      { $unwind: { path: "$category" } }
+    );
+    agg.append(
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subCategory",
+          foreignField: "_id",
+          as: "subCategory",
+          pipeline: [{ $project: { user: 0, __v: 0, parentCategory: 0 } }],
+        },
+      },
+      { $unwind: { path: "$subCategory" } }
+    );
+
+    // sorting
+    switch (req.query.date) {
+      case "asc":
+        agg.append({ $sort: { date: 1 } });
+        break;
+      case "desc":
+        agg.append({ $sort: { date: -1 } });
+        break;
+      default:
+        agg.append({ $sort: { sortDate: -1 } });
+        break;
+    }
+
+    // remove unwanted fields
+    agg.append({ $project: { user: false, sortDate: false, __v: false } });
+
+    // pagination
+    const docsPerPage = Number(req.query.docsPerPage) || 30;
+    let page = 1;
+    if (req.query.page) {
+      page = Number(req.query.page);
+    }
+    const skip = page === 1 ? 0 : docsPerPage * (page - 1);
+    agg.append({
+      $facet: {
+        data: [{ $skip: skip }, { $limit: docsPerPage }],
+        docsCount: [{ $count: "docsCount" }],
+      },
     });
+
+    const data = await agg.exec();
+    res.json({
+      page: page,
+      totalDocs: data[0].docsCount[0].docsCount,
+      data: data[0].data,
+    });
+  } catch (err) {
+    console.log(err);
+    res.json({ msg: "server error" });
+  }
+};
+
+export const getFilterOptions = async (req: Request, res: Response) => {
+  try {
+    const data: Partial<{
+      accounts: string[];
+      dateRange: { startDate: string; endDate: string };
+      date: string[];
+      amount: string[];
+      categories: { id: string; name: string }[];
+      subCategories: { id: string; name: string }[];
+    }> = {};
+    data.accounts = await Transaction.aggregate([
+      { $match: { user: res.locals.user._id } },
+      { $group: { _id: "$accountIBAN" } },
+    ]).then((res) => res.map((item) => item._id));
+    data.categories = await Transaction.aggregate([
+      { $match: { user: res.locals.user._id } },
+      { $group: { _id: "$category" } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "c",
+          pipeline: [{ $project: { _id: 1, name: 1 } }],
+        },
+      },
+    ])
+      .then((res) => res.filter((item) => item._id !== null))
+      .then((res) =>
+        res.map((item) => ({ id: item.c[0]._id, name: item.c[0].name }))
+      );
+    data.subCategories = await Transaction.aggregate([
+      { $match: { user: res.locals.user._id } },
+      { $group: { _id: "$subCategory" } },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "sc",
+          pipeline: [{ $project: { _id: 1, name: 1 } }],
+        },
+      },
+    ])
+      .then((res) => res.filter((item) => item._id !== null))
+      .then((res) =>
+        res.map((item) => ({ id: item.sc[0]._id, name: item.sc[0].name }))
+      );
+
+    data.dateRange = { startDate: "", endDate: "" };
+    data.date = ["desc", "asc"];
+    data.amount = ["pos", "neg"];
     res.json(data);
   } catch (err) {
     console.log(err);

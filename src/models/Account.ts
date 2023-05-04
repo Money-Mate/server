@@ -4,7 +4,8 @@ export interface IAccount {
   user: Types.ObjectId;
   name: string;
   iban?: string;
-  reference: string;
+  reference: "name" | "iban";
+  type: "giro" | "invest";
 }
 
 interface IAccountMethods {
@@ -22,6 +23,7 @@ export const accountSchema = new Schema<
   name: { type: String, required: true },
   iban: { type: String },
   reference: { type: String, enum: ["name", "iban"], required: true },
+  type: { type: String, enum: ["giro", "invest"], required: true },
 });
 
 accountSchema.methods.getReference = function () {

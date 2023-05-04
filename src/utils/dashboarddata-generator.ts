@@ -1,31 +1,16 @@
-import mongoose, { mongo } from "mongoose";
-import DashboardData from "../models/DashboardData";
-import Transaction, { ITransaction } from "../models/Transaction";
-import User from "../models/User";
+import mongoose from "mongoose";
+import DashboardData, { IDashboardData } from "../models/DashboardData";
+import Transaction from "../models/Transaction";
+import User, { IUser } from "../models/User";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
 dayjs.extend(utc);
 
-export const writeDashboardDataOnNewTransaction = async (
-  userId: string,
-  doc: ITransaction
-) => {
-  const dashboard = await DashboardData.findOne({ user: userId });
-  if (dashboard === null) {
-    throw new Error("dashboard not found");
-  }
-  dashboard.bankBalance += doc.amount;
-  await dashboard.save();
-};
-
-export const writeDashboardDataOnTransactionUpdateOne = async (
-  userId: string
-) => {};
-
 export const writeDashboardData = async (stringId: string) => {
   console.time("dashboardBuild");
 
+  // get userData
   const userId = new mongoose.Types.ObjectId(stringId);
   const financialOptions = await User.findById(userId)
     .select({
@@ -52,13 +37,59 @@ export const writeDashboardData = async (stringId: string) => {
       throw new Error("dashboard not found");
     });
 
+  // dates setup
   // const now = dayjs.utc().toDate();
   const today = dayjs.utc(dayjs.utc().format("YYYY-MM-DD")).toDate();
   const sixMonthsAgo = dayjs.utc(today).subtract(5, "months").date(1).toDate();
   const firstOfThisMonth = dayjs.utc(today).date(1).toDate();
+  const lastOfThisMonth = dayjs.utc(today).endOf("month").toDate();
 
-  // bankBalance
-  dashboard.bankBalance = await Transaction.aggregate([
+  // write dashboard
+  dashboard.bankBalance = await getBankBalance(userId);
+  dashboard.saved = await getSaved(
+    userId,
+    firstOfThisMonth,
+    dashboard,
+    financialOptions
+  );
+  dashboard.scheduledDebit = await getScheduledDebit(userId, today);
+  dashboard.balanceEndOfMonth = await getBalanceEndOfMonth(
+    userId,
+    firstOfThisMonth
+  );
+  dashboard.incomeForThisMonth = await getIncomeForThisMonth(
+    userId,
+    firstOfThisMonth,
+    lastOfThisMonth
+  );
+  dashboard.expensesForThisMonth = await getExpensesForThisMonth(
+    userId,
+    firstOfThisMonth,
+    lastOfThisMonth
+  );
+  dashboard.emergencyFundPercent = await getEmergencyFundPercent(
+    userId,
+    financialOptions
+  );
+  dashboard.lastSixMonthsBalance = await getBalancePerMonth(
+    userId,
+    sixMonthsAgo,
+    today
+  );
+  dashboard.lastSixMonthsIncomeAndExpenses =
+    await getLastSixMonthsIncomeAndExpenses(userId, sixMonthsAgo, today);
+  dashboard.lastSixMonthsExpensesByCategory =
+    await getLastSixMonthsExpensesByCategory(userId, sixMonthsAgo, today);
+  // dashboard.wishlist = {};
+  // dashboard.budgetlist = {};
+
+  await dashboard.save();
+  console.timeEnd("dashboardBuild");
+};
+
+const getBankBalance = async (userId: mongoose.Types.ObjectId) => {
+  // bankBalance -- all Transactions amounts summed up
+  return await Transaction.aggregate([
     { $match: { user: userId } },
     { $group: { _id: null, bankBalance: { $sum: "$amount" } } },
   ])
@@ -75,10 +106,16 @@ export const writeDashboardData = async (stringId: string) => {
     .catch(() => {
       throw new Error("financialOptions not found");
     });
+};
 
-  // saved
-  // -- ignoriere buchungen aus diesem monat und dann kontostand - notgroschen
-  dashboard.saved = await Transaction.aggregate([
+const getSaved = async (
+  userId: mongoose.Types.ObjectId,
+  firstOfThisMonth: Date,
+  dashboard: IDashboardData,
+  financialOptions: IUser["financialOptions"]
+) => {
+  // Saved -- ignoriere buchungen aus diesem monat und dann kontostand - notgroschen
+  return await Transaction.aggregate([
     { $match: { user: userId, date: { $gte: firstOfThisMonth } } },
     { $group: { _id: null, thisMonth: { $sum: "$amount" } } },
   ]).then((res) => {
@@ -91,10 +128,14 @@ export const writeDashboardData = async (stringId: string) => {
       financialOptions.amountEmergencyFund;
     return amountSaved <= 0 ? 0 : amountSaved;
   });
+};
 
-  // scheduledDebit
-  // -- alle abbuchungen nach heute und vor monatsende die minus sind
-  dashboard.scheduledDebit = await Transaction.aggregate([
+const getScheduledDebit = async (
+  userId: mongoose.Types.ObjectId,
+  today: Date
+) => {
+  // scheduledDebit -- alle abbuchungen nach heute und vor monatsende die minus sind
+  return await Transaction.aggregate([
     {
       $match: {
         user: userId,
@@ -109,10 +150,14 @@ export const writeDashboardData = async (stringId: string) => {
     }
     return res[0].scheduledDebit;
   });
+};
 
-  // balanceEndOfMonth
-  // -- kontostand heute plus alle buchungen die noch bis ende des monats kommen
-  dashboard.balanceEndOfMonth = await Transaction.aggregate([
+const getBalanceEndOfMonth = async (
+  userId: mongoose.Types.ObjectId,
+  firstOfThisMonth: Date
+) => {
+  // balanceEndOfMonth -- kontostand heute plus alle buchungen die noch bis ende des monats kommen
+  return await Transaction.aggregate([
     { $match: { user: userId, date: { $gte: firstOfThisMonth } } },
     { $group: { _id: null, balanceEndOfMonth: { $sum: "$amount" } } },
   ]).then((res) => {
@@ -121,40 +166,6 @@ export const writeDashboardData = async (stringId: string) => {
     }
     return res[0].balanceEndOfMonth;
   });
-
-  // lastSixMonthsBalance
-  // -- alle buchungen vor 6 Monaten bis heute -> group(sum-amount) by month
-  dashboard.lastSixMonthsBalance = await getBalancePerMonth(
-    userId,
-    sixMonthsAgo,
-    today
-  ).then((res) => {
-    if (!res.length) {
-      throw new Error("lastSixMonths aggregation failed");
-    }
-    interface IResult {
-      labels: string[];
-      data: number[];
-    }
-    const result: IResult = { labels: [], data: [] };
-    interface IMonth {
-      month: number;
-      year: number;
-      balanceOfMonth: number;
-    }
-    res.forEach((month: IMonth) => {
-      result.labels.push(
-        new Date(new Date().setMonth(month.month - 1)).toLocaleString("de-DE", {
-          month: "long",
-        })
-      );
-      result.data.push(month.balanceOfMonth);
-    });
-    return result;
-  });
-
-  await dashboard.save();
-  console.timeEnd("dashboardBuild");
 };
 
 const getBalancePerMonth = async (
@@ -162,6 +173,7 @@ const getBalancePerMonth = async (
   startDate: Date,
   endDate: Date = dayjs.utc().toDate()
 ) => {
+  // lastSixMonthsBalance -- alle buchungen vor 6 Monaten bis heute -> group(sum-amount) by month
   return await Transaction.aggregate([
     { $match: { user: userId, date: { $gte: startDate, $lte: endDate } } },
     {
@@ -210,62 +222,327 @@ const getBalancePerMonth = async (
         },
       },
     },
+  ]).then((res) => {
+    if (!res.length) {
+      throw new Error("lastSixMonths aggregation failed");
+    }
+    interface IResult {
+      labels: string[];
+      data: number[];
+    }
+    const result: IResult = { labels: [], data: [] };
+    interface IMonth {
+      month: number;
+      year: number;
+      balanceOfMonth: number;
+    }
+    res.forEach((month: IMonth) => {
+      result.labels.push(
+        new Date(new Date().setMonth(month.month - 1)).toLocaleString("de-DE", {
+          month: "long",
+        })
+      );
+      result.data.push(month.balanceOfMonth);
+    });
+    return result;
+  });
+};
+
+const getIncomeForThisMonth = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date
+) => {
+  // incomeForThisMonth -- get all income Transaction in this month
+  return await Transaction.aggregate([
+    {
+      $match: {
+        user: userId,
+        date: { $gte: startDate, $lte: endDate },
+        amount: { $gt: 0 },
+      },
+    },
+    { $group: { _id: null, incomeThisMonth: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].incomeThisMonth;
+  });
+};
+
+const getExpensesForThisMonth = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date
+) => {
+  // expensesForThisMonth -- get all expenses Transaction in this month
+  return await Transaction.aggregate([
+    {
+      $match: {
+        user: userId,
+        date: { $gte: startDate, $lte: endDate },
+        amount: { $lt: 0 },
+      },
+    },
+    { $group: { _id: null, expensesThisMonth: { $sum: "$amount" } } },
+  ]).then((res) => {
+    if (!res.length) {
+      return 0;
+    }
+    return res[0].expensesThisMonth;
+  });
+};
+
+const getEmergencyFundPercent = async (
+  userId: mongoose.Types.ObjectId,
+  financialOptions: IUser["financialOptions"]
+) => {
+  // emergencyFundPercent -- get percentage of emergencyFund/accounBalance
+  return await Transaction.aggregate([
+    { $match: { user: userId } },
+    { $group: { _id: null, bankBalance: { $sum: "$amount" } } },
+  ])
+    .then((res) => {
+      if (!res.length) {
+        return 0;
+      }
+      const bankBalance: number = res[0].bankBalance;
+      if (bankBalance === undefined) {
+        throw new Error("bankBalance is undefined");
+      }
+
+      const percentage =
+        (bankBalance / financialOptions.amountEmergencyFund) * 100;
+      return percentage >= 100 ? 100 : Number(percentage.toFixed(2));
+    })
+    .catch(() => {
+      throw new Error("financialOptions not found");
+    });
+};
+
+const getLastSixMonthsIncomeAndExpenses = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date
+) => {
+  // lastSixMonthsIncomeAndExpenses -- summed up incomes and expenses grouped per month
+  return await Transaction.aggregate([
+    { $match: { user: userId } },
+    {
+      $addFields: {
+        sortDate: {
+          $cond: [
+            { $ifNull: ["$statisticDate", false] },
+            "$statisticDate",
+            "$date",
+          ],
+        },
+      },
+    },
+    { $match: { sortDate: { $gte: startDate, $lte: endDate } } },
+    {
+      $facet: {
+        income: [
+          { $match: { amount: { $gt: 0 } } },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$sortDate" },
+                month: { $month: "$sortDate" },
+              },
+              amount: {
+                $sum: "$amount",
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              amount: 1,
+              date: {
+                $dateFromString: {
+                  dateString: {
+                    $concat: [
+                      "01-",
+                      { $toString: "$_id.month" },
+                      "-",
+                      { $toString: "$_id.year" },
+                    ],
+                  },
+                  format: "%d-%m-%Y",
+                },
+              },
+            },
+          },
+          {
+            $densify: {
+              field: "date",
+              range: {
+                step: 1,
+                unit: "month",
+                bounds: [startDate, endDate],
+              },
+            },
+          },
+          {
+            $project: {
+              month: { $month: "$date" },
+              year: { $year: "$date" },
+              amount: {
+                $cond: [{ $not: ["$amount"] }, 0, "$amount"],
+              },
+            },
+          },
+        ],
+        expenses: [
+          { $match: { amount: { $lt: 0 } } },
+          {
+            $group: {
+              _id: {
+                year: { $year: "$sortDate" },
+                month: { $month: "$sortDate" },
+              },
+              amount: {
+                $sum: "$amount",
+              },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              amount: 1,
+              date: {
+                $dateFromString: {
+                  dateString: {
+                    $concat: [
+                      "01-",
+                      { $toString: "$_id.month" },
+                      "-",
+                      { $toString: "$_id.year" },
+                    ],
+                  },
+                  format: "%d-%m-%Y",
+                },
+              },
+            },
+          },
+          {
+            $densify: {
+              field: "date",
+              range: {
+                step: 1,
+                unit: "month",
+                bounds: [startDate, endDate],
+              },
+            },
+          },
+          {
+            $project: {
+              month: { $month: "$date" },
+              year: { $year: "$date" },
+              amount: {
+                $cond: [{ $not: ["$amount"] }, 0, "$amount"],
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]).then((res) => {
+    if (!res.length) {
+      throw new Error("lastSixMonthsIncomeAndExpenses aggregation failed");
+    }
+    interface IResult {
+      labels: string[];
+      data: { income: number[]; expenses: number[] };
+    }
+    const result: IResult = { labels: [], data: { income: [], expenses: [] } };
+    interface IMonth {
+      month: number;
+      year: number;
+      amount: number;
+    }
+    res[0].income.forEach((month: IMonth) => {
+      result.labels.push(
+        new Date(new Date().setMonth(month.month - 1)).toLocaleString("de-DE", {
+          month: "long",
+        })
+      );
+      result.data.income.push(month.amount);
+    });
+    result.data.expenses = res[0].expenses.map((month: IMonth) =>
+      Math.abs(month.amount)
+    );
+    return result;
+  });
+};
+
+const getLastSixMonthsExpensesByCategory = async (
+  userId: mongoose.Types.ObjectId,
+  startDate: Date,
+  endDate: Date
+) => {
+  // lastSixMonthsExpensesByCategory -- get expenses of last six months grouped by categories and subcategories
+  return await Transaction.aggregate([
+    { $match: { user: userId, amount: { $lt: 0 } } },
+    {
+      $addFields: {
+        sortDate: {
+          $cond: [
+            { $ifNull: ["$statisticDate", false] },
+            "$statisticDate",
+            "$date",
+          ],
+        },
+      },
+    },
+    { $match: { sortDate: { $gte: startDate, $lte: endDate } } },
+    {
+      $group: {
+        _id: "$subCategory",
+        amount: {
+          $sum: "$amount",
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "subcategories",
+        localField: "_id",
+        foreignField: "_id",
+        as: "sub",
+      },
+    },
+    {
+      $lookup: {
+        from: "categories",
+        localField: "sub.0.parentCategory",
+        foreignField: "_id",
+        as: "cat",
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        category: {
+          $ifNull: [{ $arrayElemAt: ["$cat.name", 0] }, "nicht zugewiesen"],
+        },
+        subCategory: {
+          $ifNull: [{ $arrayElemAt: ["$sub.name", 0] }, "nicht zugewiesen"],
+        },
+        amount: { $abs: "$amount" },
+      },
+    },
   ]);
 };
 
-// incomeThisMonth
-const getIncomeForThisMonths = async (
-  userId: mongoose.Types.ObjectId,
-  startDate: Date,
-  endDate: Date = dayjs.utc().toDate()
-) => {
-  // funktion ausdenken damit der jetztige Monat automatisch herausgefunden wird
-  await Transaction.aggregate([
-    {
-      $match: {
-        user: userId,
-        date: { $gte: startDate, $lte: endDate, amount: { $gt: 0 } },
-      },
-    },
-    { $group: { _id: null, IncomeThisMonth: { $sum: "$amount" } } },
-  ]).then((res) => {
-    if (!res.length) {
-      return 0;
-    }
-    return res[0].IncomeThisMonth;
-  });
-};
-
-// expensesThisMonth
-const expensesForThisMonths = async (
-  userId: mongoose.Types.ObjectId,
-  startDate: Date,
-  endDate: Date = dayjs.utc().toDate()
-) => {
-  // funktion ausdenken damit der jetztige Monat automatisch herausgefunden wird
-  await Transaction.aggregate([
-    {
-      $match: {
-        user: userId,
-        date: { $gte: startDate, $lte: endDate, amount: { $lt: 0 } },
-      },
-    },
-    { $group: { _id: null, ExpensesThisMonth: { $sum: "$amount" } } },
-  ]).then((res) => {
-    if (!res.length) {
-      return 0;
-    }
-    return res[0].ExpensesThisMonth;
-  });
-};
-
-
-// budgets
-// muss noch überarbeitet werden wenn die models stehen
-const showBudget = async (
+const getBudgetlist = async (
   userId: mongoose.Types.ObjectId,
   category: mongoose.Types.ObjectId
 ) => {
+  // budgetlist -- list of budget and percentages?
+  // TODO: wenn budgetModels erstellt wurden diese Ansicht bauen
   await Transaction.aggregate([
     { $match: { user: userId, category: category } },
     { $group: { _id: null, budget: { $sum: "$amount" } } },
@@ -277,13 +554,12 @@ const showBudget = async (
   });
 };
 
-
-// wishlists
-// muss noch überarbeitet werden wenn die models stehen
-const showWishlist = async (
+const getWishlist = async (
   userId: mongoose.Types.ObjectId,
   category: mongoose.Types.ObjectId
 ) => {
+  // wishlist -- list of wishes and percentages/canBuy indicator?
+  // TODO: wenn wishlistModels erstellt wurden die Ansicht bauen
   await Transaction.aggregate([
     { $match: { user: userId, category: category } },
     { $group: { _id: null, wishlist: { $sum: "$amount" } } },

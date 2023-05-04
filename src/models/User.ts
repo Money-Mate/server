@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import DashboardData from "./DashboardData";
 import { categorySetup } from "../utils/category-setup";
 
-interface IUser {
+export interface IUser {
   username: string;
   email: string;
   password: string;

@@ -26,6 +26,10 @@ const addSchema = z.object({
       })
       .refine(isIBAN, { message: "not a valid IBAN" })
       .optional(),
+    type: z.enum(["giro", "invest"], {
+      required_error: "type is required",
+      invalid_type_error: "type needs to be a string",
+    }),
   }),
 });
 
@@ -58,6 +62,10 @@ const updateSchema = z.object({
         })
         .refine(isIBAN, { message: "not a valid IBAN" })
         .optional(),
+      type: z.enum(["giro", "invest"], {
+        required_error: "type is required",
+        invalid_type_error: "type needs to be a string",
+      }),
     }),
   }),
 });

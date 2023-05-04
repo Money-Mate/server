@@ -1,5 +1,4 @@
 import mongoose, { Schema, Model, Types } from "mongoose";
-import { writeDashboardDataOnNewTransaction } from "../utils/dashboarddata-generator";
 
 export interface ITransaction {
   user: Types.ObjectId;
@@ -39,10 +38,6 @@ export const transactionSchema = new Schema<ITransaction, TransactionModel>({
   subCategory: { type: Schema.Types.ObjectId, ref: "SubCategory" },
   statisticDate: { type: Date },
   tags: { type: [{ type: Schema.Types.ObjectId, ref: "Tag" }] },
-});
-
-transactionSchema.post("save", async function (doc) {
-  await writeDashboardDataOnNewTransaction(doc.user.toString(), doc);
 });
 
 const Transaction = mongoose.model<ITransaction, TransactionModel>(
