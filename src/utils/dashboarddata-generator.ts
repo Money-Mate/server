@@ -438,7 +438,9 @@ const getLastSixMonthsIncomeAndExpenses = async (
       );
       result.data.income.push(month.amount);
     });
-    result.data.expenses = res[0].expenses.map((month: IMonth) => month.amount);
+    result.data.expenses = res[0].expenses.map((month: IMonth) =>
+      Math.abs(month.amount)
+    );
     return result;
   });
 };
