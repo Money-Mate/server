@@ -8,6 +8,7 @@ export const addAccount = async (req: Request, res: Response) => {
     newAccount.user = res.locals.user._id;
     newAccount.name = req.body.name;
     newAccount.reference = req.body.reference;
+    newAccount.type = req.body.type;
 
     // optional fields
     if (req.body.iban) newAccount.iban = req.body.iban;
