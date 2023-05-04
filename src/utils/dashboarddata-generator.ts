@@ -67,6 +67,10 @@ export const writeDashboardData = async (stringId: string) => {
     firstOfThisMonth,
     lastOfThisMonth
   );
+  dashboard.emergencyFundPercent = await getEmergencyFundPercent(
+    userId,
+    financialOptions
+  );
   dashboard.lastSixMonthsBalance = await getBalancePerMonth(
     userId,
     sixMonthsAgo,
@@ -286,6 +290,33 @@ const getExpensesForThisMonth = async (
     }
     return res[0].expensesThisMonth;
   });
+};
+
+const getEmergencyFundPercent = async (
+  userId: mongoose.Types.ObjectId,
+  financialOptions: IUser["financialOptions"]
+) => {
+  // emergencyFundPercent -- get percentage of emergencyFund/accounBalance
+  return await Transaction.aggregate([
+    { $match: { user: userId } },
+    { $group: { _id: null, bankBalance: { $sum: "$amount" } } },
+  ])
+    .then((res) => {
+      if (!res.length) {
+        return 0;
+      }
+      const bankBalance: number = res[0].bankBalance;
+      if (bankBalance === undefined) {
+        throw new Error("bankBalance is undefined");
+      }
+
+      const percentage =
+        (bankBalance / financialOptions.amountEmergencyFund) * 100;
+      return percentage >= 100 ? 100 : Number(percentage.toFixed(2));
+    })
+    .catch(() => {
+      throw new Error("financialOptions not found");
+    });
 };
 
 const getLastSixMonthsIncomeAndExpenses = async (

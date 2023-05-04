@@ -8,6 +8,7 @@ export interface IDashboardData {
   balanceEndOfMonth: number;
   incomeForThisMonth: number;
   expensesForThisMonth: number;
+  emergencyFundPercent: number;
   wishlist: {
     [key: string]: number;
   };
@@ -34,6 +35,7 @@ const dashboardDataSchema = new Schema<IDashboardData, DashboardDataModel>({
   balanceEndOfMonth: { type: Number, default: 0 },
   incomeForThisMonth: { type: Number, default: 0 },
   expensesForThisMonth: { type: Number, default: 0 },
+  emergencyFundPercent: { type: Number, default: 0 },
   wishlist: { type: Object, default: {} },
   budgetlist: { type: Object, default: {} },
   lastSixMonthsBalance: {
