@@ -1,15 +1,16 @@
-import SubCategory from "../models/SubCategory";
+import SubCategory, { ISubCategory } from "../models/SubCategory";
 import { Request, Response } from "express";
 
 export const addSubCategory = async (req: Request, res: Response) => {
   try {
-    const { name, parentCategory } = req.body;
-    const data = await new SubCategory({
-      user: res.locals.user._id,
-      name,
-      parentCategory,
-    }).save();
-    res.json({ msg: "SubCategory created", data });
+    const newSubCategory: Partial<ISubCategory> = {};
+
+    newSubCategory.user = res.locals.user._id;
+    newSubCategory.name = req.body.name;
+    newSubCategory.parentCategory = req.body.parentCategory;
+
+    const data = await new SubCategory(newSubCategory).save();
+    res.json({ msg: "SubCategory created" });
   } catch (err) {
     console.log(err);
     res.json({ msg: "server error" });
@@ -18,7 +19,26 @@ export const addSubCategory = async (req: Request, res: Response) => {
 
 export const getMySubCategorys = async (req: Request, res: Response) => {
   try {
-    const data = await SubCategory.find({ user: res.locals.user._id });
+    const data = await SubCategory.find({ user: res.locals.user._id }).select({
+      user: false,
+      __v: false,
+    });
+    res.json(data);
+  } catch (err) {
+    console.log(err);
+    res.json({ msg: "server error" });
+  }
+};
+
+export const getMySubCategoriesByCategory = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const data = await SubCategory.find({
+      user: res.locals.user._id,
+      parentCategory: req.params.id,
+    }).select({ user: false, __v: false, parentCategory: false });
     res.json(data);
   } catch (err) {
     console.log(err);

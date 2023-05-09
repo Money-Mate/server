@@ -7,7 +7,7 @@ export const getDashboardData = async (req: Request, res: Response) => {
     await writeDashboardData(res.locals.user._id);
     const data = await DashboardData.findOne({
       user: res.locals.user._id,
-    }).select({ _id: false, user: false });
+    }).select({ _id: false, user: false, __v: false });
     res.json(data);
   } catch (err) {
     console.log(err);

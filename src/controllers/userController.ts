@@ -72,7 +72,12 @@ export const login = async (req: Request, res: Response) => {
 
 export const logout = (req: Request, res: Response) => {
   try {
-    res.cookie("token", "");
+    res.cookie("token", "", {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    });
     res.json({ msg: "logged out" });
   } catch (err) {
     console.log(err);
@@ -83,6 +88,19 @@ export const logout = (req: Request, res: Response) => {
 export const checkToken = (req: Request, res: Response) => {
   try {
     res.json(true);
+  } catch (err) {
+    console.log(err);
+    res.json({ msg: "server error" });
+  }
+};
+
+export const getUserData = async (req: Request, res: Response) => {
+  try {
+    const data = await User.findOne({ _id: res.locals.user._id }).select({
+      username: true,
+      _id: false,
+    });
+    res.json(data);
   } catch (err) {
     console.log(err);
     res.json({ msg: "server error" });

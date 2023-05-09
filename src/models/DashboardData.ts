@@ -6,10 +6,28 @@ export interface IDashboardData {
   saved: number;
   scheduledDebit: number;
   balanceEndOfMonth: number;
+  incomeForThisMonth: number;
+  expensesForThisMonth: number;
+  emergencyFundPercent: number;
+  wishlist: {
+    [key: string]: number;
+  };
+  budgetlist: {
+    [key: string]: number;
+  };
   lastSixMonthsBalance: {
     labels: string[];
     data: number[];
   };
+  lastSixMonthsIncomeAndExpenses: {
+    labels: string[];
+    data: { income: number[]; expenses: number[] };
+  };
+  lastSixMonthsExpensesByCategory: {
+    category: string;
+    subCategory: string;
+    amount: number;
+  }[];
 }
 
 type DashboardDataModel = Model<IDashboardData>;
@@ -20,12 +38,34 @@ const dashboardDataSchema = new Schema<IDashboardData, DashboardDataModel>({
   saved: { type: Number, default: 0 },
   scheduledDebit: { type: Number, default: 0 },
   balanceEndOfMonth: { type: Number, default: 0 },
+  incomeForThisMonth: { type: Number, default: 0 },
+  expensesForThisMonth: { type: Number, default: 0 },
+  emergencyFundPercent: { type: Number, default: 0 },
+  wishlist: { type: Object, default: {} },
+  budgetlist: { type: Object, default: {} },
   lastSixMonthsBalance: {
     labels: {
       type: Array,
       default: ["Januar", "Februar", "März", "April", "Mai", "Juni"],
     },
     data: { type: Array, default: [0, 0, 0, 0, 0, 0] },
+  },
+  lastSixMonthsIncomeAndExpenses: {
+    labels: {
+      type: Array,
+      default: ["Januar", "Februar", "März", "April", "Mai", "Juni"],
+    },
+    data: {
+      type: Object,
+      default: {
+        income: [0, 0, 0, 0, 0, 0],
+        expenses: [0, 0, 0, 0, 0, 0],
+      },
+    },
+  },
+  lastSixMonthsExpensesByCategory: {
+    type: [Object],
+    default: [{ category: "", subCategory: "", amount: 0 }],
   },
 });
 
