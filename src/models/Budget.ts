@@ -2,10 +2,12 @@ import mongoose, { Model, Schema, Types } from "mongoose";
 
 export interface IBudget {
   user: Types.ObjectId;
-  item: string;
+  name: string;
   amount: number;
-  amountspent: number;
-  amountleft: number;
+  interval: "week" | "month" | "year";
+  categories?: Types.ObjectId[];
+  subCategories?: Types.ObjectId[];
+  tags?: Types.ObjectId[];
 }
 
 type BudgetModel = Model<IBudget>;
@@ -16,30 +18,23 @@ export const BudgetSchema = new Schema<IBudget, BudgetModel>({
     ref: "User",
     required: true,
   },
-  item: {
-    type: String,
-    required: true,
-    minlength: 1,
-  },
+  name: { type: String, required: true },
   amount: {
     type: Number,
     required: true,
     min: 0,
   },
-  amountspent: {
-    type: Number,
+  interval: {
+    type: String,
+    enum: ["week", "month", "year"],
+    default: "month",
     required: true,
-    min: 0,
   },
-  amountleft: {
-    type: Number,
-    required: true,
-    max: 0,
+  categories: { type: [{ type: Schema.Types.ObjectId, ref: "Category" }] },
+  subCategories: {
+    type: [{ type: Schema.Types.ObjectId, ref: "SubCategory" }],
   },
-});
-
-BudgetSchema.pre<IBudget>("save", function () {
-  this.amountleft = this.amount - this.amountspent;
+  tags: { type: [{ type: Schema.Types.ObjectId, ref: "Tag" }] },
 });
 
 export const Budget = mongoose.model<IBudget, BudgetModel>(
