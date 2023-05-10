@@ -13,7 +13,7 @@ export interface IDashboardData {
     [key: string]: number;
   };
   budgetlist: {
-    [key: string]: number;
+    [key: string]: { now: number; of: number; percent: number };
   };
   lastSixMonthsBalance: {
     labels: string[];

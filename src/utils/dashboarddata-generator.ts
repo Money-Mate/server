@@ -4,6 +4,7 @@ import Transaction from "../models/Transaction";
 import User, { IUser } from "../models/User";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { Budget } from "../models/Budget";
 
 dayjs.extend(utc);
 
@@ -80,8 +81,12 @@ export const writeDashboardData = async (stringId: string) => {
     await getLastSixMonthsIncomeAndExpenses(userId, sixMonthsAgo, today);
   dashboard.lastSixMonthsExpensesByCategory =
     await getLastSixMonthsExpensesByCategory(userId, sixMonthsAgo, today);
+  dashboard.budgetlist = await getBudgetlist(
+    userId,
+    firstOfThisMonth,
+    lastOfThisMonth
+  );
   // dashboard.wishlist = {};
-  // dashboard.budgetlist = {};
 
   await dashboard.save();
   console.timeEnd("dashboardBuild");
@@ -539,19 +544,58 @@ const getLastSixMonthsExpensesByCategory = async (
 
 const getBudgetlist = async (
   userId: mongoose.Types.ObjectId,
-  category: mongoose.Types.ObjectId
+  startDate: Date,
+  endDate: Date
 ) => {
-  // budgetlist -- list of budget and percentages?
-  // TODO: wenn budgetModels erstellt wurden diese Ansicht bauen
-  await Transaction.aggregate([
-    { $match: { user: userId, category: category } },
-    { $group: { _id: null, budget: { $sum: "$amount" } } },
-  ]).then((res) => {
-    if (!res.length) {
-      return 0;
-    }
-    return res[0].showBudget;
+  // budgetlist -- list of budgets and percentages for this month
+  const budgetItems: {
+    [key: string]: { now: number; of: number; percent: number };
+  } = {};
+
+  const budgets = await Budget.find({ user: userId });
+
+  const budgetsWritten = budgets.map(async (budget) => {
+    const amount = await Transaction.aggregate([
+      {
+        $match: {
+          user: userId,
+          date: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+          $or: [
+            {
+              category: {
+                $in: budget.categories,
+              },
+            },
+            { subCategory: { $in: budget.subCategories } },
+            { tags: { $in: budget.tags } },
+          ],
+        },
+      },
+      {
+        $group: {
+          _id: 0,
+          amount: {
+            $sum: { $abs: "$amount" },
+          },
+        },
+      },
+    ]).then((res) => {
+      if (!res.length) {
+        return 0;
+      }
+      return res[0].amount;
+    });
+    budgetItems[budget.name] = {
+      now: amount,
+      of: budget.amount,
+      percent: Number(((amount / budget.amount) * 100).toFixed(2)),
+    };
   });
+  await Promise.all(budgetsWritten);
+  return budgetItems;
 };
 
 const getWishlist = async (
