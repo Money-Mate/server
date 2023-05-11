@@ -10,7 +10,12 @@ export interface IDashboardData {
   expensesForThisMonth: number;
   emergencyFundPercent: number;
   wishlist: {
-    [key: string]: number;
+    [key: string]: {
+      now: number;
+      of: number;
+      percent: number;
+      canAfford: boolean;
+    };
   };
   budgetlist: {
     [key: string]: { now: number; of: number; percent: number };
