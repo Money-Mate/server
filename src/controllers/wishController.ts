@@ -6,6 +6,7 @@ export const addWish = async (req: Request, res: Response) => {
     const newWish: Partial<IWish> = {};
 
     // required fields
+    newWish.user = res.locals.user._id;
     newWish.name = req.body.name;
     newWish.price = req.body.price;
 

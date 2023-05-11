@@ -7,6 +7,7 @@ export const addWishlist = async (req: Request, res: Response) => {
     const newWishlist: Partial<IWishlist> = {};
 
     // required fields
+    newWishlist.user = res.locals.user._id;
     newWishlist.name = req.body.name;
     const allExists = req.body.wishes.map(async (wish: string) => {
       const foundWish = await Wish.findOne({
