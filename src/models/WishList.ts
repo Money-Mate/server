@@ -1,9 +1,9 @@
 import mongoose, { Model, Schema, Types } from "mongoose";
-import { IWish } from "./Wishes";
 
 export interface IWishlist {
   user: Types.ObjectId;
-  wishes: IWish[];
+  name: string;
+  wishes?: Types.ObjectId[];
 }
 
 type WishlistModel = Model<IWishlist>;
@@ -14,6 +14,7 @@ const WishlistSchema = new Schema<IWishlist, WishlistModel>({
     ref: "User",
     required: true,
   },
+  name: { type: String, required: true, minlength: 1, unique: true },
   wishes: [
     {
       type: Schema.Types.ObjectId,
@@ -22,6 +23,9 @@ const WishlistSchema = new Schema<IWishlist, WishlistModel>({
   ],
 });
 
-const Wishlist = mongoose.model<IWishlist, WishlistModel>("Wishlist", WishlistSchema);
+const Wishlist = mongoose.model<IWishlist, WishlistModel>(
+  "Wishlist",
+  WishlistSchema
+);
 
 export default Wishlist;
