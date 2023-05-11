@@ -97,8 +97,10 @@ export const checkToken = (req: Request, res: Response) => {
 export const getUserData = async (req: Request, res: Response) => {
   try {
     const data = await User.findOne({ _id: res.locals.user._id }).select({
-      username: true,
       _id: false,
+      username: true,
+      email: true,
+      financialOptions: true,
     });
     res.json(data);
   } catch (err) {

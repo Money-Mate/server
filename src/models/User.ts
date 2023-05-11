@@ -10,6 +10,7 @@ export interface IUser {
   role: string;
   financialOptions: {
     amountEmergencyFund: number;
+    splitIncome: { needs: number; wants: number; savings: number };
   };
 }
 
@@ -32,6 +33,10 @@ export const userSchema = new Schema<IUser, UserModel, IUserMethods>({
   },
   financialOptions: {
     amountEmergencyFund: { type: Number, default: 0 },
+    splitIncome: {
+      type: Object,
+      default: { needs: 50, wants: 30, savings: 20 },
+    },
   },
 });
 
