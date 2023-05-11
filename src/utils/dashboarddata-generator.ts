@@ -4,6 +4,8 @@ import Transaction from "../models/Transaction";
 import User, { IUser } from "../models/User";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { Budget } from "../models/Budget";
+import { Wish } from "../models/Wish";
 
 dayjs.extend(utc);
 
@@ -46,12 +48,13 @@ export const writeDashboardData = async (stringId: string) => {
 
   // write dashboard
   dashboard.bankBalance = await getBankBalance(userId);
-  dashboard.saved = await getSaved(
+  const savedAmount = await getSaved(
     userId,
     firstOfThisMonth,
     dashboard,
     financialOptions
   );
+  dashboard.saved = savedAmount;
   dashboard.scheduledDebit = await getScheduledDebit(userId, today);
   dashboard.balanceEndOfMonth = await getBalanceEndOfMonth(
     userId,
@@ -80,8 +83,12 @@ export const writeDashboardData = async (stringId: string) => {
     await getLastSixMonthsIncomeAndExpenses(userId, sixMonthsAgo, today);
   dashboard.lastSixMonthsExpensesByCategory =
     await getLastSixMonthsExpensesByCategory(userId, sixMonthsAgo, today);
-  // dashboard.wishlist = {};
-  // dashboard.budgetlist = {};
+  dashboard.budgetlist = await getBudgetlist(
+    userId,
+    firstOfThisMonth,
+    lastOfThisMonth
+  );
+  dashboard.wishlist = await getWishlist(userId, savedAmount);
 
   await dashboard.save();
   console.timeEnd("dashboardBuild");
@@ -539,34 +546,106 @@ const getLastSixMonthsExpensesByCategory = async (
 
 const getBudgetlist = async (
   userId: mongoose.Types.ObjectId,
-  category: mongoose.Types.ObjectId
+  startDate: Date,
+  endDate: Date
 ) => {
-  // budgetlist -- list of budget and percentages?
-  // TODO: wenn budgetModels erstellt wurden diese Ansicht bauen
-  await Transaction.aggregate([
-    { $match: { user: userId, category: category } },
-    { $group: { _id: null, budget: { $sum: "$amount" } } },
-  ]).then((res) => {
-    if (!res.length) {
-      return 0;
-    }
-    return res[0].showBudget;
+  // budgetlist -- list of budgets and percentages for this month
+  const budgetItems: IDashboardData["budgetlist"] = {};
+
+  const budgets = await Budget.find({ user: userId });
+
+  const budgetsWritten = budgets.map(async (budget) => {
+    const amount = await Transaction.aggregate([
+      {
+        $match: {
+          user: userId,
+          date: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+          $or: [
+            {
+              category: {
+                $in: budget.categories,
+              },
+            },
+            { subCategory: { $in: budget.subCategories } },
+            { tags: { $in: budget.tags } },
+          ],
+        },
+      },
+      {
+        $group: {
+          _id: 0,
+          amount: {
+            $sum: { $abs: "$amount" },
+          },
+        },
+      },
+    ]).then((res) => {
+      if (!res.length) {
+        return 0;
+      }
+      return res[0].amount;
+    });
+    budgetItems[budget.name] = {
+      now: amount,
+      of: budget.amount,
+      percent: Number(((amount / budget.amount) * 100).toFixed(2)),
+    };
   });
+  await Promise.all(budgetsWritten);
+  return budgetItems;
 };
 
 const getWishlist = async (
   userId: mongoose.Types.ObjectId,
-  category: mongoose.Types.ObjectId
+  savedAmount: number
 ) => {
   // wishlist -- list of wishes and percentages/canBuy indicator?
-  // TODO: wenn wishlistModels erstellt wurden die Ansicht bauen
-  await Transaction.aggregate([
-    { $match: { user: userId, category: category } },
-    { $group: { _id: null, wishlist: { $sum: "$amount" } } },
-  ]).then((res) => {
-    if (!res.length) {
-      return 0;
-    }
-    return res[0].showWishlist;
+  const wishItems: IDashboardData["wishlist"] = {};
+
+  const wishes = await Wish.find({ user: userId });
+  wishes.forEach((wish) => {
+    wishItems[wish.name] = {
+      now: savedAmount,
+      of: wish.price,
+      percent:
+        Number(((savedAmount / wish.price) * 100).toFixed(2)) >= 100
+          ? 100
+          : Number(((savedAmount / wish.price) * 100).toFixed(2)),
+      canAfford: savedAmount >= wish.price,
+    };
   });
+
+  return wishItems;
+
+  // logik um wishlists zu zeigen
+  // const wishes = await Wishlist.aggregate([
+  //   {
+  //     $match: {
+  //       user: userId,
+  //     },
+  //   },
+  //   { $limit: 1 },
+  //   {
+  //     $lookup: {
+  //       from: "wishes",
+  //       localField: "wishes",
+  //       foreignField: "_id",
+  //       as: "wishes",
+  //     },
+  //   },
+  //   {
+  //     $unwind: {
+  //       path: "$wishes",
+  //     },
+  //   },
+  //   {
+  //     $project: {
+  //       name: "$wishes.name",
+  //       price: "$wishes.price",
+  //     },
+  //   },
+  // ]);
 };
