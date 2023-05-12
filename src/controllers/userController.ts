@@ -1,4 +1,4 @@
-import User from "../models/User";
+import User, { IUser } from "../models/User";
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 
@@ -102,6 +102,21 @@ export const getUserData = async (req: Request, res: Response) => {
       email: true,
       financialOptions: true,
     });
+    res.json(data);
+  } catch (err) {
+    console.log(err);
+    res.json({ msg: "server error" });
+  }
+};
+
+export const updateUserData = async (req: Request, res: Response) => {
+  try {
+    const newUserData: Partial<IUser> = {};
+    if (req.body.username) newUserData.username = req.body.username;
+    if (req.body.email) newUserData.email = req.body.email;
+    if (req.body.financialOptions)
+      newUserData.financialOptions = req.body.financialOptions;
+    const data = User.updateOne({ _id: res.locals.user._id }, newUserData);
     res.json(data);
   } catch (err) {
     console.log(err);
