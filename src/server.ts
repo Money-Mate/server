@@ -8,6 +8,7 @@ import subCategoryRoute from "./routes/subCategoryRoute";
 import accountRoute from "./routes/accountRoute";
 import tagRoute from "./routes/tagRoute";
 import dashboardRoute from "./routes/dashboardRoute";
+import investmentRoute from "./routes/investmentRoute";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { endpointList } from "./utils/express-list-enpoints";
@@ -30,6 +31,7 @@ app.use("/subCategory", subCategoryRoute);
 app.use("/account", accountRoute);
 app.use("/tag", tagRoute);
 app.use("/dashboard", dashboardRoute);
+app.use("/investmentdashboard", investmentRoute)
 
 endpointList(app);
 
