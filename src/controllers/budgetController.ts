@@ -80,10 +80,48 @@ export const addBudget = async (req: Request, res: Response) => {
 
 export const getMyBudget = async (req: Request, res: Response) => {
   try {
-    const data = await Budget.find({ user: res.locals.user._id }).select({
-      user: false,
-      __v: false,
-    });
+    // const data = await Budget.find({ user: res.locals.user._id }).select({
+    //   user: false,
+    //   __v: false,
+    // });
+    const data = await Budget.aggregate([
+      { $match: { user: res.locals.user._id } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categories",
+          foreignField: "_id",
+          as: "categories",
+          pipeline: [{ $project: { user: false, __v: false } }],
+        },
+      },
+      {
+        $lookup: {
+          from: "subcategories",
+          localField: "subCategories",
+          foreignField: "_id",
+          as: "subCategories",
+          pipeline: [
+            {
+              $project: {
+                user: false,
+                __v: false,
+                parentCategory: false,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "tags",
+          localField: "tags",
+          foreignField: "_id",
+          as: "tags",
+          pipeline: [{ $project: { user: false, __v: false } }],
+        },
+      },
+    ]);
     res.json(data);
   } catch (err) {
     console.log(err);

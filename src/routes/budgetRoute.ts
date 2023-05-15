@@ -47,8 +47,8 @@ const updateSchema = z.object({
         message: "invalid ObjectId",
       }),
     data: z.object({
-      name: z.string(),
-      amount: z.number(),
+      name: z.string().optional(),
+      amount: z.number().optional(),
       categories: z
         .array(
           z.string().refine((id: string) => Types.ObjectId.isValid(id), {
