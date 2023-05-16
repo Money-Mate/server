@@ -591,7 +591,10 @@ const getBudgetlist = async (
     budgetItems[budget.name] = {
       now: amount,
       of: budget.amount,
-      percent: Number(((amount / budget.amount) * 100).toFixed(2)),
+      percent:
+        Number(((amount / budget.amount) * 100).toFixed(2)) >= 100
+          ? 100
+          : Number(((amount / budget.amount) * 100).toFixed(2)),
     };
   });
   await Promise.all(budgetsWritten);
